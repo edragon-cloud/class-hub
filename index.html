@@ -403,7 +403,7 @@ function hideAlert(){
 async function callGAS(action, data={}) {
   const res = await fetch(GAS_URL, {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    redirect:'follow',
     body: JSON.stringify({action, ...data})
   });
   if(!res.ok) throw new Error('Network error');
