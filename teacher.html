@@ -328,7 +328,6 @@ textarea.fc{resize:vertical;min-height:70px;}
 const GAS = 'https://script.google.com/macros/s/AKfycbxFoUNaIKvVw5d4T96_X_K89W0lKbJTCnZQTUgKqPjxJO0Sj8qnILeP7rranGYdkbKv/exec';
 const sess = JSON.parse(localStorage.getItem('userSession')||'null');
 if (!sess || sess.Role !== 'Teacher') { location.href = 'index.html'; }
-else {
 
 let classData = [];
 let currentClass = null;
@@ -609,4 +608,13 @@ function showSection(name) {
 
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 function doLogout(){localStorage.removeItem('userSession');location.href='index.html';}
-f
+function toast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+loadOverview();
+</script>
+</body>
+</html>
