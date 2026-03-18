@@ -325,7 +325,7 @@ async function init(){
 }
 
 async function callGAS(action,data={}){
-  const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...data})});
+  const res=await fetch(GAS_URL,{method:'POST',redirect:'follow',body:JSON.stringify({action,...data})});
   return res.json();
 }
 
@@ -514,3 +514,16 @@ function showSection(name){
 
 function showToast(msg,type=''){
   const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+function logout(){
+  localStorage.removeItem('userSession');
+  window.location.href='index.html';
+}
+
+init();
+</script>
+</body>
+</html>
