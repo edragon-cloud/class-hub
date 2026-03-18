@@ -93,6 +93,8 @@ textarea.fc{resize:vertical;min-height:70px;}
     <div class="nav-lbl">MANAGEMENT</div>
     <div class="nav-item active" onclick="showSection('overview')"><span>📊</span>Class Overview</div>
     <div class="nav-item" id="nav-detail" onclick="showSection('detail')" style="display:none"><span>👥</span>Class Detail</div>
+    <div class="nav-lbl">SCHEDULE</div>
+    <div class="nav-item" onclick="showSection('weekly')"><span>🗓</span>Weekly Schedule</div>
     <div class="nav-lbl">REPORTS</div>
     <div class="nav-item" onclick="showSection('diligence')"><span>🏆</span>Diligence Report</div>
     <div class="nav-item" onclick="showSection('export')"><span>📤</span>Monthly Export</div>
@@ -198,11 +200,34 @@ textarea.fc{resize:vertical;min-height:70px;}
       </div>
     </div>
 
+    <!-- WEEKLY SCHEDULE -->
+    <div id="section-weekly" class="section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;">Weekly Schedule</div>
+          <div style="font-size:12px;color:var(--g400);margin-top:2px" id="weekRangeLabel"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline" onclick="changeWeek(-1)" style="padding:7px 14px;font-size:13px;">‹ Prev</button>
+          <button class="btn btn-outline" onclick="changeWeek(0)"  style="padding:7px 14px;font-size:13px;">Today</button>
+          <button class="btn btn-outline" onclick="changeWeek(1)"  style="padding:7px 14px;font-size:13px;">Next ›</button>
+        </div>
+      </div>
+      <div class="card" style="overflow:visible;">
+        <div class="tbl-wrap">
+          <table id="weeklyTable">
+            <thead id="weeklyThead"></thead>
+            <tbody id="weeklyTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- EXPORT -->
     <div id="section-export" class="section">
       <div class="report-card">
         <h3>Monthly Report Export</h3>
-        <p>Generate and email a full monthly summary to <strong>duongthanhtu.dnu@gmail.com</strong> — includes attendance, tuition status, and participation scores for all students.</p>
+        <p>Generate and email a full monthly summary to <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="0165746e6f667569606f6975742f656f7441666c60686d2f626e6c">[email&#160;protected]</a></strong> — includes attendance, tuition status, and participation scores for all students.</p>
         <div style="display:flex;gap:12px;flex-wrap:wrap;">
           <button class="btn btn-primary" onclick="doExport()">📧 Email Report</button>
           <button class="btn btn-outline" onclick="previewReport()">👁 Preview</button>
@@ -299,7 +324,7 @@ textarea.fc{resize:vertical;min-height:70px;}
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 const GAS = 'https://script.google.com/macros/s/AKfycbxFoUNaIKvVw5d4T96_X_K89W0lKbJTCnZQTUgKqPjxJO0Sj8qnILeP7rranGYdkbKv/exec';
 const sess = JSON.parse(localStorage.getItem('userSession')||'null');
 if (!sess || sess.Role !== 'Teacher') { location.href = 'index.html'; }
@@ -573,24 +598,15 @@ function previewReport() {
   toast('Preview loaded','ok');
 }
 
-const sectionTitles={overview:'Class Overview',detail:'Class Detail',diligence:'Diligence Report',export:'Monthly Export'};
+const sectionTitles={overview:'Class Overview',detail:'Class Detail',diligence:'Diligence Report',export:'Monthly Export',weekly:'Weekly Schedule'};
 function showSection(name) {
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('section-'+name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.textContent.trim().startsWith(sectionTitles[name].split(' ')[0])));
   document.getElementById('pageTitle').textContent=sectionTitles[name];
+  if (name==='weekly') loadWeekly();
 }
 
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 function doLogout(){localStorage.removeItem('userSession');location.href='index.html';}
-function toast(msg,type=''){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.className='toast '+type+' show';
-  setTimeout(()=>t.classList.remove('show'),3500);
-}
-
-loadOverview();
-} // end else
-</script>
-</body>
-</html>
+f
