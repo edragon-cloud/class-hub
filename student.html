@@ -432,7 +432,7 @@ function showLoading(v){document.getElementById('loadingOverlay').classList.togg
 async function callGAS(action,data={}) {
   const res = await fetch(GAS_URL,{
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    redirect:'follow',
     body:JSON.stringify({action,studentId:session.Email,classId:session.Class,...data})
   });
   return res.json();
