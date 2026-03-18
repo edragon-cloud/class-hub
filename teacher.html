@@ -183,11 +183,13 @@ textarea.fc{resize:vertical;min-height:65px;}
     <div id="sec-tuition" class="sec">
       <div class="ctabs" id="tuitionTabs"><button class="ctab active" onclick="filterTuition('all',this)">All Classes</button></div>
       <div class="card">
-        <div class="ch"><div class="ct" id="tuitionTitle">Tuition Tracker</div><span style="font-size:12px;color:var(--g400)">8 sessions = 1 month · tick to mark paid</span></div>
-        <div class="tw"><table>
-          <thead><tr><th>#</th><th>Student</th><th>Class</th><th>Months Done</th><th>Current Progress</th><th>Payment Status</th></tr></thead>
-          <tbody id="tuitionBody"><tr><td colspan="6" style="text-align:center;padding:40px;color:var(--g400)">Loading…</td></tr></tbody>
-        </table></div>
+        <div class="ch">
+          <div class="ct" id="tuitionTitle">Tuition Tracker</div>
+          <span style="font-size:12px;color:var(--g400)">8 sessions = 1 month · ✓ tick to mark paid · click date to edit</span>
+        </div>
+        <div id="tuitionContent" style="padding:0;">
+          <p style="padding:40px;text-align:center;color:var(--g400)">Select a class to view tuition status.</p>
+        </div>
       </div>
     </div>
 
@@ -201,7 +203,7 @@ textarea.fc{resize:vertical;min-height:65px;}
     <div id="sec-export" class="sec">
       <div style="background:white;border-radius:13px;padding:26px;box-shadow:var(--sh);">
         <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:8px;">Monthly Report</div>
-        <p style="color:var(--g400);font-size:13px;margin-bottom:18px;">Send monthly summary to <strong>duongthanhtu.dnu@gmail.com</strong>.</p>
+        <p style="color:var(--g400);font-size:13px;margin-bottom:18px;">Send monthly summary to <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="aecadbc1c0c9dac6cfc0c6dadb80cac0dbeec9c3cfc7c280cdc1c3">[email&#160;protected]</a></strong>.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-r" onclick="doExport()">📧 Email Report</button>
           <button class="btn btn-o" onclick="previewReport()">👁 Preview</button>
@@ -305,7 +307,7 @@ textarea.fc{resize:vertical;min-height:65px;}
 
 <div class="toast" id="toast"></div>
 
-<script data-cfasync="false">
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false">
 // ═══════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════
@@ -724,77 +726,166 @@ function changeWeek(dir){weekOffset=dir===0?0:weekOffset+dir;loadWeekly();}
 // ═══════════════════════════════════════════════════════
 // ④ TUITION TRACKER
 // ═══════════════════════════════════════════════════════
-function filterTuition(classId,btn){
+function filterTuition(classId, btn) {
   document.querySelectorAll('#tuitionTabs .ctab').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   loadTuition(classId);
 }
 
 async function loadTuition(classId) {
-  var el=document.getElementById('tuitionBody');
-  document.getElementById('tuitionTitle').textContent=classId==='all'?'Tuition Tracker — All Classes':'Tuition Tracker — '+classId;
-  if(classId==='all'){
-    var all=classData.reduce(function(acc,c){return acc.concat(c.students);}, []);
-    el.innerHTML=all.map(function(s,i){var sin=s.total%8||(s.total>0?8:0);var pct=Math.round(sin/8*100);
-      return '<tr><td>'+(i+1)+'</td><td><strong>'+s.name+'</strong></td><td>'+s.class+'</td><td>'+s.monthsUsed+' mo</td>'+
-        '<td style="min-width:130px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span>'+sin+'/8</span><span>'+pct+'%</span></div>'+
-        '<div style="background:var(--g100);border-radius:99px;height:5px"><div style="width:'+pct+'%;height:100%;border-radius:99px;background:var(--red)"></div></div></td>'+
-        '<td>—</td></tr>';
-    }).join('');
+  var el = document.getElementById('tuitionContent');
+  document.getElementById('tuitionTitle').textContent =
+    classId==='all' ? 'Tuition Tracker — All Classes' : 'Tuition Tracker — '+classId;
+
+  if (classId==='all') {
+    // Summary table for all classes
+    var all = classData.reduce(function(a,c){return a.concat(c.students);}, []);
+    el.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'+
+      '<thead><tr style="background:var(--g100)">'+
+        '<th style="padding:9px 13px;text-align:left">#</th>'+
+        '<th style="padding:9px 13px;text-align:left">Student</th>'+
+        '<th style="padding:9px 13px;text-align:left">Class</th>'+
+        '<th style="padding:9px 13px;text-align:center">Sessions</th>'+
+        '<th style="padding:9px 13px;text-align:center">Months</th>'+
+        '<th style="padding:9px 13px;text-align:left">Progress</th>'+
+      '</tr></thead><tbody>'+
+      all.map(function(s,i){
+        var sin=s.total%8||(s.total>0?8:0), pct=Math.round(sin/8*100);
+        return '<tr>'+
+          '<td style="padding:9px 13px;color:var(--g400)">'+(i+1)+'</td>'+
+          '<td style="padding:9px 13px"><strong>'+s.name+'</strong></td>'+
+          '<td style="padding:9px 13px"><span style="background:var(--g100);padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600">'+s.class+'</span></td>'+
+          '<td style="padding:9px 13px;text-align:center">'+s.total+'</td>'+
+          '<td style="padding:9px 13px;text-align:center;font-weight:700">'+s.monthsUsed+'</td>'+
+          '<td style="padding:9px 13px;min-width:130px">'+
+            '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span>'+sin+'/8</span><span>'+pct+'%</span></div>'+
+            '<div style="background:var(--g100);border-radius:99px;height:5px"><div style="width:'+pct+'%;height:100%;border-radius:99px;background:var(--red)"></div></div>'+
+          '</td>'+
+        '</tr>';
+      }).join('')+'</tbody></table></div>';
     return;
   }
-  el.innerHTML='<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--g400)">Loading…</td></tr>';
+
+  el.innerHTML = '<p style="padding:30px;text-align:center;color:var(--g400)">Loading payment data…</p>';
   try {
-    var r=await api('getTuitionForClass',{classId:classId});
-    if(!r.success){el.innerHTML='<tr><td colspan="6" style="color:var(--red);padding:20px">Error: '+r.message+'</td></tr>';return;}
-    tuitionCache[classId]=r.students;
-    renderTuitionRows(classId);
-  } catch(e){el.innerHTML='<tr><td colspan="6" style="color:var(--red);padding:20px">Connection error</td></tr>';}
+    var r = await api('getTuitionForClass', {classId:classId});
+    if (!r.success) { el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>'; return; }
+    tuitionCache[classId] = r.students;
+    renderTuitionGrid(classId);
+  } catch(e) { el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>'; }
 }
 
-function renderTuitionRows(classId) {
-  var students=tuitionCache[classId]||[];
-  var el=document.getElementById('tuitionBody');
-  if(!students.length){el.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--g400)">No students</td></tr>';return;}
-  el.innerHTML=students.map(function(s,i){
-    var sin=s.sessInCycle,pct=Math.round(sin/8*100);
-    var totalMonths=s.monthsCompleted+(sin>0?1:0);
-    var monthCols=Array(Math.max(totalMonths,1)).fill(0).map(function(_,mo){
-      var moNo=String(mo+1);
-      var payment=s.monthPayments[moNo];
-      var isPast=mo<s.monthsCompleted;
-      var inProgress=mo===s.monthsCompleted&&sin>0;
-      var paid=!!payment;
-      var bg=paid?'#f0fdf4':'#fff5f5';
-      var border=paid?'#86efac':'#fca5a5';
-      if(!isPast&&!inProgress) return '<div style="padding:6px 9px;border-radius:7px;background:var(--g100);border:1px solid var(--g200);opacity:.4;margin-bottom:5px"><div style="font-size:10px;color:var(--g400)">Month '+moNo+' (future)</div></div>';
-      return '<div style="padding:7px 9px;border-radius:7px;border:1px solid '+border+';background:'+bg+';margin-bottom:5px">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:'+(paid?'4px':'0')+'">'+
-          '<span style="font-size:11px;font-weight:700;color:var(--g600)">Month '+moNo+(inProgress?' <span style="color:var(--red);font-weight:400">('+sin+'/8)</span>':'')+'</span>'+
-          '<label style="display:flex;align-items:center;gap:3px;cursor:pointer">'+
-            '<input type="checkbox" '+(paid?'checked':'')+' onchange="togglePaid(\''+classId+'\',\''+s.email+'\',\''+moNo+'\',this)" style="width:13px;height:13px;cursor:pointer;accent-color:var(--red)"/>'+
-            '<span style="font-size:11px;font-weight:600;color:'+(paid?'#16a34a':'#dc2626')+'">'+(paid?'Paid':'Unpaid')+'</span>'+
-          '</label>'+
-        '</div>'+
-        (paid?'<input type="date" value="'+(payment.date||'')+'" onchange="updatePaidDate(\''+classId+'\',\''+s.email+'\',\''+moNo+'\',this)" style="font-size:10px;border:1px solid #86efac;border-radius:4px;padding:2px 5px;color:#166534;background:transparent;cursor:pointer;width:100%"/>':'')+'</div>';
-    }).join('');
-    return '<tr><td style="color:var(--g400)">'+(i+1)+'</td>'+
-      '<td><strong>'+s.name+'</strong><br><span style="font-size:11px;color:var(--g400)">'+s.email+'</span></td>'+
-      '<td>'+classId+'</td>'+
-      '<td><span style="font-size:18px;font-weight:700;font-family:\'Playfair Display\',serif">'+s.monthsCompleted+'</span><br><span style="font-size:11px;color:var(--g400)">'+s.total+' sessions</span></td>'+
-      '<td style="min-width:140px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="font-weight:600">'+sin+'/8</span><span>'+pct+'%</span></div>'+
-        '<div style="background:var(--g100);border-radius:99px;height:5px"><div style="width:'+pct+'%;height:100%;border-radius:99px;background:var(--red)"></div></div></td>'+
-      '<td style="min-width:190px">'+monthCols+'</td></tr>';
+function renderTuitionGrid(classId) {
+  var students = tuitionCache[classId] || [];
+  var el = document.getElementById('tuitionContent');
+  if (!students.length) { el.innerHTML='<p style="padding:40px;text-align:center;color:var(--g400)">No students</p>'; return; }
+
+  // Find max months to determine columns
+  var maxMonths = 0;
+  students.forEach(function(s){
+    var total = s.monthsCompleted + (s.sessInCycle>0?1:0);
+    if(total>maxMonths) maxMonths=total;
+  });
+  maxMonths = Math.max(maxMonths, 1);
+
+  // Build month column headers
+  var monthHeaders = '';
+  for (var mo=1; mo<=maxMonths; mo++) {
+    monthHeaders += '<th colspan="9" style="padding:8px 4px;text-align:center;background:'+(mo%2===0?'#e8e6e2':'var(--g100)')+';border-right:2px solid var(--g200);font-size:11px;font-weight:700;color:var(--g600)">Month '+mo+'</th>';
+  }
+
+  // Build session sub-headers: 8 session dots + 1 paid column per month
+  var sessHeaders = '';
+  for (var mo=1; mo<=maxMonths; mo++) {
+    for (var s=1; s<=8; s++) {
+      sessHeaders += '<th style="padding:6px 2px;text-align:center;background:var(--g100);font-size:10px;color:var(--g400);width:32px">'+s+'</th>';
+    }
+    sessHeaders += '<th style="padding:6px 6px;text-align:center;background:#f0fdf4;border-right:2px solid var(--g200);font-size:10px;color:#166534;white-space:nowrap">Paid?</th>';
+  }
+
+  // Build rows
+  var rows = students.map(function(s, i) {
+    var cells = '';
+    for (var mo=0; mo<maxMonths; mo++) {
+      var moNo = String(mo+1);
+      var chunkStart = mo*8;
+      var chunkEnd   = mo*8+8;
+      // Get attendance for this month chunk
+      // We use sessInCycle and monthsCompleted to determine which sessions are done
+      var sessInThisMonth = 0;
+      if (mo < s.monthsCompleted) sessInThisMonth = 8;
+      else if (mo === s.monthsCompleted) sessInThisMonth = s.sessInCycle;
+
+      // 8 session dots
+      for (var si=0; si<8; si++) {
+        if (si < sessInThisMonth) {
+          // Attended — green tick
+          cells += '<td style="padding:3px 2px;text-align:center">'+
+            '<div style="width:26px;height:26px;background:#16a34a;border-radius:5px;margin:auto;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:700;">&#10003;</div>'+
+          '</td>';
+        } else {
+          // Not yet
+          cells += '<td style="padding:3px 2px;text-align:center">'+
+            '<div style="width:26px;height:26px;background:var(--g100);border-radius:5px;margin:auto;border:1px dashed var(--g200);"></div>'+
+          '</td>';
+        }
+      }
+
+      // Paid column
+      var payment = s.monthPayments[moNo];
+      var paid = !!payment;
+      var monthDone = mo < s.monthsCompleted || (mo===s.monthsCompleted && s.sessInCycle>0);
+      cells += '<td style="padding:3px 6px;text-align:center;border-right:2px solid var(--g200);background:#f0fdf4;">'+
+        (monthDone ?
+          '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">'+
+            '<label style="display:flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap;">'+
+              '<input type="checkbox" '+(paid?'checked':'')+
+                ' onchange="togglePaid(''+classId+'',''+s.email+'',''+moNo+'',this)"'+
+                ' style="width:13px;height:13px;cursor:pointer;accent-color:var(--red)"/>'+
+              '<span style="font-size:10px;font-weight:700;color:'+(paid?'#16a34a':'#dc2626')+'">'+(paid?'Paid':'Unpaid')+'</span>'+
+            '</label>'+
+            (paid?'<input type="date" value="'+payment.date+'"'+
+              ' onchange="updatePaidDate(''+classId+'',''+s.email+'',''+moNo+'',this)"'+
+              ' style="font-size:9px;border:none;border-bottom:1px solid #86efac;background:transparent;color:#166534;cursor:pointer;width:70px;text-align:center"/>':'')+
+          '</div>'
+        : '<span style="color:var(--g200);font-size:10px">—</span>')+
+      '</td>';
+    }
+
+    return '<tr>'+
+      '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);white-space:nowrap;position:sticky;left:0;background:white;z-index:1;">'+
+        '<strong style="font-size:13px">'+s.name+'</strong>'+
+        '<div style="font-size:10px;color:var(--g400)">'+s.total+' sessions</div>'+
+      '</td>'+
+      cells+
+    '</tr>';
   }).join('');
+
+  el.innerHTML =
+    '<div style="overflow-x:auto">'+
+    '<table style="border-collapse:collapse;font-size:12px;min-width:100%">'+
+      '<thead>'+
+        '<tr>'+
+          '<th style="padding:8px 13px;text-align:left;background:var(--g900);color:white;position:sticky;left:0;z-index:2;font-size:12px;white-space:nowrap">Student</th>'+
+          monthHeaders+
+        '</tr>'+
+        '<tr>'+
+          '<th style="padding:6px 13px;background:var(--g900);position:sticky;left:0;z-index:2;"></th>'+
+          sessHeaders+
+        '</tr>'+
+      '</thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table></div>';
 }
 
 async function togglePaid(classId,email,monthNo,cb){
-  var paid=cb.checked,today=new Date().toISOString().split('T')[0];
+  var paid=cb.checked, today=new Date().toISOString().split('T')[0];
   try{
     await api('markTuitionPaid',{classId:classId,studentEmail:email,monthNo:monthNo,paid:paid,paidDate:paid?today:''});
     var st=(tuitionCache[classId]||[]).find(function(s){return s.email===email;});
     if(st){if(paid)st.monthPayments[monthNo]={date:today,note:''};else delete st.monthPayments[monthNo];}
-    renderTuitionRows(classId); toast(paid?'Marked paid ✓':'Marked unpaid','ok');
+    renderTuitionGrid(classId);
+    toast(paid?'Marked paid ✓':'Marked unpaid','ok');
   }catch(e){toast('Error','err');cb.checked=!paid;}
 }
 
@@ -861,14 +952,14 @@ async function loadDiligence(classId){
           (sorted[1]?'<div class="rcard rcard-silver"><div style="font-size:9px;font-weight:700;letter-spacing:.5px;color:#475569">🥈 MOST DILIGENT #2</div><div style="font-size:15px;font-weight:700;margin-top:4px">'+sorted[1].name+'</div><div style="font-size:11px;color:rgba(0,0,0,.4);margin-top:2px">'+sorted[1].present+'P · '+sorted[1].absent+'A · '+sorted[1].late+'L · '+sorted[1].avgScore+'pts</div></div>':'')+
           (topPart?'<div class="rcard rcard-blue"><div style="font-size:9px;font-weight:700;letter-spacing:.5px;color:#1e40af">⭐ TOP PARTICIPATION</div><div style="font-size:15px;font-weight:700;margin-top:4px">'+topPart.name+'</div><div style="font-size:11px;color:rgba(0,0,0,.4);margin-top:2px">Avg: '+topPart.avgScore+'/10</div></div>':'')+
         '</div>'+
-        '<div class="tw"><table><thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Late</th><th>Avg Score</th><th>Tuition</th><th>Diligent?</th></tr></thead><tbody>'+
+        '<div class="tw"><table><thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Late</th><th>HW Done</th><th>Avg Score</th><th>Tuition</th><th>Diligent?</th></tr></thead><tbody>'+
         mo.students.sort(function(a,b){return b.diligent-a.diligent||b.avgScore-a.avgScore;}).map(function(s){
           return '<tr><td><strong>'+s.name+'</strong></td>'+
             '<td><span class="badge bp">'+s.present+'</span></td>'+
             '<td><span class="badge ba">'+s.absent+'</span></td>'+
             '<td><span class="badge bl">'+s.late+'</span></td>'+
             '<td><span class="badge '+(s.hwDue>0&&s.hwDone>=s.hwDue?'bp':'bunpaid')+'">'+(s.hwDue>0?(s.hwDone+'/'+s.hwDue):'—')+'</span></td>'+
-            '<td>'+(s.avgScore>0?s.avgScore+'/10':'—')+'</td>'+
+            '<td style="font-weight:600">'+(s.avgScore>0?s.avgScore+'/10':'—')+'</td>'+
             '<td>'+(s.tuitionPaid?'<span class="badge bpaid">✓ Paid</span>':'<span class="badge bunpaid">Unpaid</span>')+'</td>'+
             '<td>'+(s.diligent?'<span class="badge bstar">⭐</span>':'—')+'</td></tr>';
         }).join('')+'</tbody></table></div></div>';
