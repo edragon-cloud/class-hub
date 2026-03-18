@@ -384,42 +384,73 @@ function renderTuition() {
   const t = sd.tuition || {};
   const total = t.total||0, monthsUsed = t.monthsUsed||0, sessInCycle = t.sessInCycle||0;
   const pct = Math.round((sessInCycle/8)*100);
-  const att = sd.attendance||[];
-  // Build all months history
+  // Only count non-Day-0 sessions with real attendance
+  const att = (sd.attendance||[]).filter(a=>a.status && a.dayLabel && a.dayLabel.toLowerCase().replace(/ /g,'').replace('day','')!=='0');
+  const allSessions = sd.sessions||[]; // full schedule including Day 0
+
+  const fmtDot = (d) => {
+    if(!d) return '';
+    const p = d.split('-'); // yyyy-MM-dd
+    return p.length===3 ? p[2]+'/'+p[1] : d.slice(5); // DD/MM
+  };
+
   const monthsHtml = Array(monthsUsed+1).fill(0).map((_,mo)=>{
-    const chunk = att.slice(mo*8, mo*8+8);
+    const chunk = att.slice(mo*8, mo*8+8); // attended sessions for this month
     const isComplete = chunk.length===8;
-    const lastDate = chunk.length ? chunk[chunk.length-1].date : null;
-    const dots = Array(8).fill(0).map((_,i)=>{
-      const s = chunk[i];
-      if(!s) return `<div class="sd rem" style="width:34px;height:34px">${i+1}</div>`;
-      const cls = s.status==='Absent'?'absent':s.status==='Late'?'absent':'done';
-      const lbl = s.score>0?s.score:(s.status==='Absent'?'A':s.status==='Late'?'L':'✓');
-      return `<div class="sd ${cls}" title="${s.date}" style="width:34px;height:34px;font-size:10px">${lbl}<br><span style="font-size:8px;opacity:.7">${(s.date||'').slice(5)}</span></div>`;
-    }).join('');
     const isCurrent = mo===monthsUsed;
-    return `<div style="background:${isCurrent?'white':isComplete?'#f0fdf4':'white'};border:1px solid ${isCurrent?'var(--red)':isComplete?'#86efac':'var(--g200)'};border-radius:10px;padding:14px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:13px;font-weight:700;">Month ${mo+1} ${isCurrent?'<span style="color:var(--red);font-size:11px">● Current</span>':isComplete?'<span style="color:#16a34a;font-size:11px">✓ Complete</span>':''}</div>
-        ${lastDate?`<div style="font-size:11px;color:var(--g400)">Last session: ${lastDate}</div>`:''}
-      </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;">${dots}</div>
-      ${isCurrent?`<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600">${sessInCycle}/8 sessions</span><span style="color:var(--g400)">${pct}%</span></div><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div></div>`:''}
-    </div>`;
+    // Get scheduled sessions for reference dates
+    const schedSessions = allSessions.filter(s=>s.dayLabel && s.dayLabel.toLowerCase().replace(/ /g,'').replace('day','')!=='0' && s.date);
+    const schedChunk = schedSessions.slice(mo*8, mo*8+8);
+    const lastDate = chunk.length ? chunk[chunk.length-1].date : null;
+
+    const dots = Array(8).fill(0).map((_,i)=>{
+      const attended = chunk[i];
+      const sched = schedChunk[i];
+      if(attended) {
+        // Has real attendance record
+        const isAbsent = attended.status==='Absent';
+        const isLate   = attended.status==='Late';
+        const bg = isAbsent?'#fee2e2':isLate?'#fef9c3':'#16a34a';
+        const co = isAbsent?'#991b1b':isLate?'#854d0e':'white';
+        const icon = isAbsent?'&#10005;':isLate?'&#9200;':'&#10003;';
+        return '<div title="'+attended.date+' - '+attended.status+'" style="width:52px;height:52px;border-radius:9px;background:'+bg+';color:'+co+';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:700;flex-shrink:0;">'+
+          '<span style="font-size:14px">'+icon+'</span>'+
+          '<span style="font-size:9px;opacity:.85">'+fmtDot(attended.date)+'</span>'+
+        '</div>';
+      } else if(sched && isCurrent) {
+        // Upcoming — show scheduled date in dashed box
+        return '<div title="'+sched.date+' - Upcoming" style="width:52px;height:52px;border-radius:9px;background:var(--g100);border:1px dashed var(--g200);color:var(--g400);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;">'+
+          '<span style="font-size:11px">'+(i+1)+'</span>'+
+          '<span style="font-size:9px">'+fmtDot(sched.date)+'</span>'+
+        '</div>';
+      }
+      return '<div style="width:52px;height:52px;border-radius:9px;background:var(--g100);color:var(--g400);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">'+(i+1)+'</div>';
+    }).join('');
+
+    return '<div style="background:'+(isCurrent?'white':isComplete?'#f0fdf4':'white')+';border:1px solid '+(isCurrent?'var(--red)':isComplete?'#86efac':'var(--g200)')+';border-radius:10px;padding:16px;margin-bottom:10px;">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'+
+        '<div style="font-size:14px;font-weight:700;">Month '+(mo+1)+
+          (isCurrent?' <span style="color:var(--red);font-size:11px;margin-left:6px">&#9679; Current</span>':
+           isComplete?' <span style="color:#16a34a;font-size:11px;margin-left:6px">&#10003; Complete</span>':'')+
+        '</div>'+
+        (lastDate?'<div style="font-size:11px;color:var(--g400)">Last: '+fmtDot(lastDate)+'</div>':'')+
+      '</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+dots+'</div>'+
+      (isCurrent?'<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="font-weight:600">'+sessInCycle+'/8 sessions</span><span style="color:var(--g400)">'+pct+'%</span></div><div class="progress-track"><div class="progress-fill" style="width:'+pct+'%"></div></div></div>':'')+
+    '</div>';
   }).join('');
 
-  document.getElementById('tuitionContent').innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <div>
-        <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;">Tuition History</div>
-        <div style="font-size:12px;color:var(--g400);margin-top:2px">${total} total sessions · ${att.filter(a=>a.status==='Absent').length} absence(s)</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--red)">${monthsUsed}</div>
-        <div style="font-size:11px;color:var(--g400)">month(s) completed</div>
-      </div>
-    </div>
-    ${monthsHtml}`;
+  document.getElementById('tuitionContent').innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">'+
+      '<div>'+
+        '<div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;">Tuition History</div>'+
+        '<div style="font-size:12px;color:var(--g400);margin-top:2px">'+total+' sessions counted &middot; '+att.filter(a=>a.status==='Absent').length+' absence(s)</div>'+
+      '</div>'+
+      '<div style="text-align:right">'+
+        '<div style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--red)">'+monthsUsed+'</div>'+
+        '<div style="font-size:11px;color:var(--g400)">month(s) completed</div>'+
+      '</div>'+
+    '</div>'+monthsHtml;
 }
 
 function renderParticipation() {
@@ -473,7 +504,7 @@ function setScheduleView(v) {
 
 function renderListView() {
   if(!sd) return;
-  const sessions = (sd.sessions||[]).filter(s=>s.dayLabel.toLowerCase()!=='day 0' && s.date);
+  const sessions = (sd.sessions||[]).filter(s=>s.date); // Day 0 included as orientation
   const att = sd.attendance||[];
   const attMap = {};
   att.forEach(a=>{ if(a.date) attMap[a.date]=a; });
