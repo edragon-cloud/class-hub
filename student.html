@@ -219,6 +219,17 @@ async function init() {
     const r = await api('getStudentData', { studentEmail: sess.Email, classId: sess.Class });
     if (r.success) {
       sd = r;
+      // Auto-navigate to month containing first upcoming session (or first session)
+      const allSessions = (r.sessions||[]).filter(s=>s.date);
+      if (allSessions.length) {
+        // Find first upcoming session >= today
+        const todayStr = new Date().toISOString().split('T')[0];
+        const upcoming = allSessions.find(s=>s.date>=todayStr) || allSessions[0];
+        if (upcoming && upcoming.date) {
+          const d = new Date(upcoming.date);
+          if (!isNaN(d)) curDate = new Date(d.getFullYear(), d.getMonth(), 1);
+        }
+      }
       renderStats(); renderCalendar(); renderHomework(); renderTuition(); renderParticipation();
     } else console.error(r.message);
   } catch(e) { console.error(e); }
@@ -226,17 +237,18 @@ async function init() {
 }
 
 function renderStats() {
-  const att = sd.attendance || [];
-  const total   = att.length;
+  // att = only sessions that have been attended (status not null)
+  const att = (sd.attendance || []).filter(a=>a.status!==null);
   const present = att.filter(a=>a.status==='Present').length;
   const absent  = att.filter(a=>a.status==='Absent').length;
+  const total   = att.length; // real attended sessions only
   const hw = (sd.homework||[]).filter(h=>h.daysLeft>=0);
-  const monthAtt = att.slice(sd.tuition.monthsUsed*8);
+  const monthAtt = att.slice((sd.tuition.monthsUsed||0)*8);
   const scored = monthAtt.filter(a=>a.score>0);
   const avg = scored.length ? (scored.reduce((s,x)=>s+x.score,0)/scored.length).toFixed(1) : '–';
 
   document.getElementById('sSessions').textContent = total;
-  document.getElementById('sMonths').textContent = `Month ${sd.tuition.monthsUsed+1} — ${sd.tuition.sessInCycle}/8 sessions`;
+  document.getElementById('sMonths').textContent = `Month ${(sd.tuition.monthsUsed||0)+1} — ${sd.tuition.sessInCycle||0}/8 sessions`;
   document.getElementById('sPresent').textContent = present;
   document.getElementById('sAbsent').textContent = absent + ' absence(s)';
   document.getElementById('sHW').textContent = hw.length;
