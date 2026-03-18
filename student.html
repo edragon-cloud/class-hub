@@ -197,7 +197,8 @@ table.pt tr:last-child td{border-bottom:none;}
 const GAS = 'https://script.google.com/macros/s/AKfycbxFoUNaIKvVw5d4T96_X_K89W0lKbJTCnZQTUgKqPjxJO0Sj8qnILeP7rranGYdkbKv/exec';
 const sess = JSON.parse(localStorage.getItem('userSession')||'null');
 if (!sess || sess.Role === 'Teacher') { location.href = 'index.html'; }
-else {
+
+if (sess && sess.Role !== 'Teacher') {
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -281,7 +282,7 @@ function renderCalendar() {
       const skillLabel = s.skill ? `<span style="font-weight:700">${s.skill}</span> · ` : '';
       events += `<div class="ev ev-class">📘 ${skillLabel}${s.content||''}</div>`;
     }
-    if (a) {
+    if (a && a.status) {
       const label = a.status==='Present'?'✓ Present':a.status==='Absent'?'✗ Absent':'⏱ Late';
       events += `<div class="ev ev-${a.status.toLowerCase()}">${label}${a.score>0?' · '+a.score+'pts':''}</div>`;
     }
@@ -402,7 +403,8 @@ function nav(name) {
 
 function doLogout() { localStorage.removeItem('userSession'); location.href='index.html'; }
 init();
-} // end else
+
+} // end if(sess)
 </script>
 </body>
 </html>
