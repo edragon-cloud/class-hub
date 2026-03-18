@@ -831,24 +831,14 @@ function renderTuitionGrid(classId) {
         }
       }
 
-      // Paid column
+      // Paid column — use data attributes to avoid nested quote issues
       var payment = s.monthPayments[moNo];
       var paid = !!payment;
       var monthDone = mo < s.monthsCompleted || (mo===s.monthsCompleted && s.sessInCycle>0);
-      cells += '<td style="padding:3px 6px;text-align:center;border-right:2px solid var(--g200);background:#f0fdf4;">'+
-        (monthDone ?
-          '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">'+
-            '<label style="display:flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap;">'+
-              '<input type="checkbox" '+(paid?'checked':'')+
-                ' onchange="togglePaid(''+classId+'',''+s.email+'',''+moNo+'',this)"'+
-                ' style="width:13px;height:13px;cursor:pointer;accent-color:var(--red)"/>'+
-              '<span style="font-size:10px;font-weight:700;color:'+(paid?'#16a34a':'#dc2626')+'">'+(paid?'Paid':'Unpaid')+'</span>'+
-            '</label>'+
-            (paid?'<input type="date" value="'+payment.date+'"'+
-              ' onchange="updatePaidDate(''+classId+'',''+s.email+'',''+moNo+'',this)"'+
-              ' style="font-size:9px;border:none;border-bottom:1px solid #86efac;background:transparent;color:#166534;cursor:pointer;width:70px;text-align:center"/>':'')+
-          '</div>'
-        : '<span style="color:var(--g200);font-size:10px">—</span>')+
+      var paidCellId = 'pc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+moNo;
+      cells += '<td style="padding:3px 6px;text-align:center;border-right:2px solid var(--g200);background:#f0fdf4;" id="'+paidCellId+'">'+
+        (monthDone ? '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">loading...</div>'
+                   : '<span style="color:var(--g200);font-size:10px">—</span>')+
       '</td>';
     }
 
@@ -876,17 +866,73 @@ function renderTuitionGrid(classId) {
       '</thead>'+
       '<tbody>'+rows+'</tbody>'+
     '</table></div>';
+
+  // Wire up paid cells using DOM (avoids nested quote issues in HTML strings)
+  students.forEach(function(s) {
+    for (var mo=0; mo<maxMonths; mo++) {
+      var moNo = String(mo+1);
+      var monthDone = mo < s.monthsCompleted || (mo===s.monthsCompleted && s.sessInCycle>0);
+      if (!monthDone) continue;
+      var cellId = 'pc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+moNo;
+      var cell = document.getElementById(cellId);
+      if (!cell) continue;
+      var payment = s.monthPayments[moNo];
+      var paid = !!payment;
+      buildPaidCell(cell, classId, s.email, moNo, paid, paid ? payment.date : '');
+    }
+  });
+}
+
+function buildPaidCell(cell, classId, email, moNo, paid, paidDate) {
+  var wrap = document.createElement('div');
+  wrap.style = 'display:flex;flex-direction:column;align-items:center;gap:2px;';
+
+  var label = document.createElement('label');
+  label.style = 'display:flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap;';
+
+  var cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.checked = paid;
+  cb.style = 'width:13px;height:13px;cursor:pointer;accent-color:var(--red)';
+  cb.onchange = (function(cid,em,mo,lbl){ return function(){
+    togglePaidCell(cid,em,mo,this,lbl);
+  };})(classId, email, moNo, label);
+
+  var lbl = document.createElement('span');
+  lbl.style = 'font-size:10px;font-weight:700;color:'+(paid?'#16a34a':'#dc2626');
+  lbl.textContent = paid ? 'Paid' : 'Unpaid';
+
+  label.appendChild(cb); label.appendChild(lbl);
+  wrap.appendChild(label);
+
+  if (paid && paidDate) {
+    var dateInput = document.createElement('input');
+    dateInput.type = 'date'; dateInput.value = paidDate;
+    dateInput.style = 'font-size:9px;border:none;border-bottom:1px solid #86efac;background:transparent;color:#166534;cursor:pointer;width:70px;text-align:center';
+    dateInput.onchange = (function(cid,em,mo){ return function(){
+      updatePaidDate(cid,em,mo,this);
+    };})(classId, email, moNo);
+    wrap.appendChild(dateInput);
+  }
+  cell.innerHTML = '';
+  cell.appendChild(wrap);
+}
+
+async function togglePaidCell(classId, email, moNo, cb, labelEl) {
+  var paid = cb.checked;
+  var today = new Date().toISOString().split('T')[0];
+  try {
+    await api('markTuitionPaid',{classId:classId,studentEmail:email,monthNo:moNo,paid:paid,paidDate:paid?today:''});
+    var st=(tuitionCache[classId]||[]).find(function(s){return s.email===email;});
+    if(st){if(paid)st.monthPayments[moNo]={date:today,note:''};else delete st.monthPayments[moNo];}
+    var cellId='pc-'+classId.replace(/ /g,'_')+'-'+email.replace(/[@.]/g,'_')+'-'+moNo;
+    var cell=document.getElementById(cellId);
+    if(cell) buildPaidCell(cell,classId,email,moNo,paid,paid?today:'');
+    toast(paid?'Marked paid ✓':'Marked unpaid','ok');
+  } catch(e){toast('Error','err');cb.checked=!paid;}
 }
 
 async function togglePaid(classId,email,monthNo,cb){
-  var paid=cb.checked, today=new Date().toISOString().split('T')[0];
-  try{
-    await api('markTuitionPaid',{classId:classId,studentEmail:email,monthNo:monthNo,paid:paid,paidDate:paid?today:''});
-    var st=(tuitionCache[classId]||[]).find(function(s){return s.email===email;});
-    if(st){if(paid)st.monthPayments[monthNo]={date:today,note:''};else delete st.monthPayments[monthNo];}
-    renderTuitionGrid(classId);
-    toast(paid?'Marked paid ✓':'Marked unpaid','ok');
-  }catch(e){toast('Error','err');cb.checked=!paid;}
+  await togglePaidCell(classId,email,monthNo,cb,null);
 }
 
 async function updatePaidDate(classId,email,monthNo,input){
