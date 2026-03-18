@@ -201,7 +201,7 @@ textarea.fc{resize:vertical;min-height:65px;}
     <div id="sec-export" class="sec">
       <div style="background:white;border-radius:13px;padding:26px;box-shadow:var(--sh);">
         <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:8px;">Monthly Report</div>
-        <p style="color:var(--g400);font-size:13px;margin-bottom:18px;">Send monthly summary to <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="91f5e4fefff6e5f9f0fff9e5e4bff5ffe4d1f6fcf0f8fdbff2fefc">[email&#160;protected]</a></strong>.</p>
+        <p style="color:var(--g400);font-size:13px;margin-bottom:18px;">Send monthly summary to <strong>duongthanhtu.dnu@gmail.com</strong>.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-r" onclick="doExport()">📧 Email Report</button>
           <button class="btn btn-o" onclick="previewReport()">👁 Preview</button>
@@ -305,7 +305,7 @@ textarea.fc{resize:vertical;min-height:65px;}
 
 <div class="toast" id="toast"></div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script data-cfasync="false">
 // ═══════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════
@@ -925,17 +925,27 @@ async function checkAttRecords(){
     res.textContent=dupMsg+' Total: '+recs.length+' records.';
     res.style.cssText='display:block;padding:9px 13px;border-radius:7px;font-size:13px;background:'+(dups.length?'#fef9c3':'#dcfce7')+';color:'+(dups.length?'#854d0e':'#166534')+';border:1px solid '+(dups.length?'#fde047':'#86efac')+';';
     list.style.display='block';
-    list.innerHTML='<div style="font-size:12px;font-weight:600;color:var(--g600);margin-bottom:7px">Records ('+recs.length+'):</div>'+
-      '<div style="max-height:200px;overflow-y:auto;border:1px solid var(--g200);border-radius:7px;">'+
-      recs.map(function(rec){
-        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 11px;border-bottom:1px solid var(--g100);font-size:12px;">'+
-          '<span>'+rec.date+' &middot; '+rec.dayLabel+'</span>'+
-          '<span style="display:flex;align-items:center;gap:7px;">'+
-            '<span class="badge '+(rec.status==='Present'?'bp':rec.status==='Absent'?'ba':'bl')+'">'+rec.status+'</span>'+
-            '<button onclick="quickDeleteAtt(''+email+'',''+rec.date+'')" style="padding:2px 8px;border:1px solid #fca5a5;background:#fee2e2;border-radius:5px;font-size:10px;color:#991b1b;cursor:pointer;">Delete</button>'+
-          '</span>'+
-        '</div>';
-      }).join('')+'</div>';
+    // Build records list using DOM (avoids nested quote issues)
+    var listWrap = document.createElement('div');
+    listWrap.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--g600);margin-bottom:7px">Records ('+recs.length+')</div>';
+    var inner = document.createElement('div');
+    inner.style = 'max-height:200px;overflow-y:auto;border:1px solid var(--g200);border-radius:7px;';
+    recs.forEach(function(rec){
+      var row = document.createElement('div');
+      row.style = 'display:flex;align-items:center;justify-content:space-between;padding:7px 11px;border-bottom:1px solid var(--g100);font-size:12px;';
+      var sc = rec.status==='Present'?'bp':rec.status==='Absent'?'ba':'bl';
+      row.innerHTML = '<span>'+rec.date+' &middot; '+rec.dayLabel+'</span>'+
+        '<span style="display:flex;align-items:center;gap:7px;"><span class="badge '+sc+'">'+rec.status+'</span></span>';
+      var btn = document.createElement('button');
+      btn.textContent = 'Delete';
+      btn.style = 'padding:2px 8px;border:1px solid #fca5a5;background:#fee2e2;border-radius:5px;font-size:10px;color:#991b1b;cursor:pointer;';
+      (function(e,d){ btn.onclick = function(){ quickDeleteAtt(e,d); }; })(email, rec.date);
+      row.querySelector('span:last-child').appendChild(btn);
+      inner.appendChild(row);
+    });
+    listWrap.appendChild(inner);
+    list.innerHTML = '';
+    list.appendChild(listWrap);
   }catch(e){res.textContent='Connection error.';res.style.cssText='display:block;padding:9px 13px;border-radius:7px;background:#fee2e2;color:#991b1b;font-size:13px;';}
 }
 async function quickDeleteAtt(email,date){
@@ -974,4 +984,15 @@ async function doRefresh(){
 }
 
 function closeMo(id){document.getElementById(id).classList.remove('show');}
-function doLogout(){localStorage.removeItem('userSession');location.href='ind
+function doLogout(){localStorage.removeItem('userSession');location.href='index.html';}
+
+function toast(msg,type){
+  var t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast '+(type||'')+' show';
+  setTimeout(function(){t.classList.remove('show');},3500);
+}
+
+init();
+</script>
+</body>
+</html>

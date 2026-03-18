@@ -510,12 +510,33 @@ async function verifyOTP(){
   } catch(e){alert.textContent='Connection error.';alert.classList.add('show');}
 }
 
-// Auto-redirect if already logged in
-const sess=localStorage.getItem('userSession');
-if(sess){
-  const u=JSON.parse(sess);
-  if(u.Role==='Teacher') window.location.href='teacher.html';
-  else window.location.href='student.html';
+// Show "already logged in" banner instead of hard redirect
+const _sess = localStorage.getItem('userSession');
+if (_sess) {
+  const _u = JSON.parse(_sess);
+  // Inject a banner above the auth card
+  const banner = document.createElement('div');
+  banner.style = 'background:#1a1916;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;';
+  banner.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;background:#E01A22;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:white;flex-shrink:0">${(_u.FullName||'?')[0].toUpperCase()}</div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:white">Logged in as <strong>${_u.FullName}</strong></div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">${_u.Role==='Teacher'?'Teacher':'Student · '+(_u.Class||'')}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="window.location.href='${_u.Role==='Teacher'?'teacher.html':'student.html'}'"
+        style="padding:8px 16px;border:none;border-radius:8px;background:#E01A22;color:white;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">
+        Continue →
+      </button>
+      <button onclick="localStorage.removeItem('userSession');this.closest('div[style]').remove()"
+        style="padding:8px 16px;border:2px solid rgba(255,255,255,.2);border-radius:8px;background:transparent;color:rgba(255,255,255,.7);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;">
+        Sign Out
+      </button>
+    </div>`;
+  const card = document.querySelector('.auth-card');
+  if (card) card.insertBefore(banner, card.firstChild);
 }
 </script>
 </body>
