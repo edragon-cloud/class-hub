@@ -49,6 +49,19 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--off);col
 .today-dot{width:26px;height:26px;background:var(--red);color:white;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;}
 .ev{font-size:12px;padding:3px 6px;border-radius:5px;margin-bottom:2px;white-space:normal;line-height:1.4;word-break:break-word;}
 .ev-present{background:#dcfce7;color:#166534;}.ev-absent{background:#fee2e2;color:#991b1b;}.ev-late{background:#fef9c3;color:#854d0e;}.ev-class{background:#dbeafe;color:#1e40af;}
+/* List view */
+.list-row{display:flex;align-items:flex-start;gap:0;border-bottom:1px solid var(--g100);}
+.list-row:last-child{border-bottom:none;}
+.list-date{min-width:110px;padding:14px 16px;font-size:13px;font-weight:600;flex-shrink:0;border-right:1px solid var(--g100);}
+.list-date .ldate-day{font-size:11px;color:var(--g400);}
+.list-content{padding:12px 16px;flex:1;}
+.list-skill{display:inline-block;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;margin-right:6px;margin-bottom:4px;}
+.list-lesson{font-size:13px;color:var(--g900);line-height:1.5;}
+.list-status{padding:12px 16px;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+/* View toggle */
+.view-toggle{display:flex;background:var(--g100);border-radius:8px;padding:3px;gap:2px;}
+.vt-btn{padding:6px 12px;border:none;background:transparent;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--g400);transition:all .2s;}
+.vt-btn.active{background:white;color:var(--g900);box-shadow:0 1px 4px rgba(0,0,0,.1);}
 .hw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
 .hw-card{background:white;border-radius:12px;padding:18px;box-shadow:var(--sh);border-left:4px solid transparent;}
 .hw-card.W{border-left-color:#f97316;}.hw-card.L{border-left-color:#3b82f6;}.hw-card.S{border-left-color:#8b5cf6;}.hw-card.V{border-left-color:#22c55e;}
@@ -160,12 +173,18 @@ table.pt tr:last-child td{border-bottom:none;}
 
     <!-- SCHEDULE -->
     <div id="section-schedule" class="section active">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
         <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;">Class Schedule</div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <button onclick="changeMonth(-1)" style="width:30px;height:30px;border:1px solid var(--g200);background:white;border-radius:7px;cursor:pointer;font-size:13px;transition:all .2s;">‹</button>
-          <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;" id="calMonth">—</div>
-          <button onclick="changeMonth(1)" style="width:30px;height:30px;border:1px solid var(--g200);background:white;border-radius:7px;cursor:pointer;font-size:13px;transition:all .2s;">›</button>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="view-toggle">
+            <button class="vt-btn active" id="btnCalView" onclick="setScheduleView('cal')">📅 Calendar</button>
+            <button class="vt-btn" id="btnListView" onclick="setScheduleView('list')">📋 List</button>
+          </div>
+          <div id="calNavWrap" style="display:flex;align-items:center;gap:8px;">
+            <button onclick="changeMonth(-1)" style="width:30px;height:30px;border:1px solid var(--g200);background:white;border-radius:7px;cursor:pointer;font-size:13px;">‹</button>
+            <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;min-width:140px;text-align:center" id="calMonth">—</div>
+            <button onclick="changeMonth(1)" style="width:30px;height:30px;border:1px solid var(--g200);background:white;border-radius:7px;cursor:pointer;font-size:13px;">›</button>
+          </div>
         </div>
       </div>
       <div class="cal-card"><div id="calGrid"></div></div>
@@ -438,7 +457,73 @@ function renderParticipation() {
 
 function changeMonth(dir) {
   curDate = new Date(curDate.getFullYear(), curDate.getMonth()+dir, 1);
-  renderCalendar();
+  if(scheduleView==='cal') renderCalendar();
+  else renderListView();
+}
+
+let scheduleView = 'cal';
+function setScheduleView(v) {
+  scheduleView = v;
+  document.getElementById('btnCalView').classList.toggle('active', v==='cal');
+  document.getElementById('btnListView').classList.toggle('active', v==='list');
+  document.getElementById('calNavWrap').style.display = v==='cal' ? 'flex' : 'none';
+  if(v==='cal') renderCalendar();
+  else renderListView();
+}
+
+function renderListView() {
+  if(!sd) return;
+  const sessions = (sd.sessions||[]).filter(s=>s.dayLabel.toLowerCase()!=='day 0' && s.date);
+  const att = sd.attendance||[];
+  const attMap = {};
+  att.forEach(a=>{ if(a.date) attMap[a.date]=a; });
+  const today = new Date().toISOString().split('T')[0];
+
+  const skillColors = {
+    WRITING: {bg:'#ffedd5',color:'#7c2d12'},
+    SPEAKING:{bg:'#ede9fe',color:'#4c1d95'},
+    LISTENING:{bg:'#dbeafe',color:'#1e40af'},
+    READING: {bg:'#dcfce7',color:'#166534'},
+    GRAMMAR: {bg:'#f1f0ee',color:'#5c5a56'},
+  };
+
+  const rows = sessions.map(s=>{
+    const a = attMap[s.date];
+    const isPast = s.date <= today;
+    const skill = (s.skill||'').toUpperCase();
+    const sc = Object.entries(skillColors).find(([k])=>skill.includes(k))?.[1] || {bg:'#f1f0ee',color:'#5c5a56'};
+    const dateObj = new Date(s.date);
+    const dayName = dateObj.toLocaleDateString('en-GB',{weekday:'short'});
+    const dateStr = dateObj.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+    let statusHtml = '';
+    if(a && a.status) {
+      const stc = a.status==='Present'?'#dcfce7,#166534':a.status==='Absent'?'#fee2e2,#991b1b':'#fef9c3,#854d0e';
+      const [bg2,co2] = stc.split(',');
+      const lbl = a.status==='Present'?'✓ Present':a.status==='Absent'?'✗ Absent':'⏱ Late';
+      statusHtml = `<span style="background:${bg2};color:${co2};padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600">${lbl}</span>`;
+      if(a.score>0) statusHtml += `<span style="font-size:11px;color:var(--g400)"> ${a.score}pts</span>`;
+    } else if(isPast) {
+      statusHtml = '<span style="font-size:11px;color:var(--g400)">No record</span>';
+    } else {
+      statusHtml = '<span style="font-size:11px;color:var(--g400)">Upcoming</span>';
+    }
+    const isToday = s.date===today;
+    return `<div class="list-row" style="${isToday?'background:rgba(224,26,34,.03)':''}">
+      <div class="list-date" style="${isToday?'color:var(--red);font-weight:700':''}">
+        <div>${dateStr}</div>
+        <div class="ldate-day">${dayName} · ${s.dayLabel}</div>
+      </div>
+      <div class="list-content">
+        <span class="list-skill" style="background:${sc.bg};color:${sc.color}">${s.skill||'—'}</span>
+        <span class="list-lesson">${s.content||'—'}</span>
+      </div>
+      <div class="list-status">${statusHtml}</div>
+    </div>`;
+  });
+
+  document.getElementById('calGrid').innerHTML = rows.length
+    ? `<div style="font-size:13px;font-weight:600;color:var(--g400);padding:12px 16px;border-bottom:1px solid var(--g100)">All Sessions — ${sessions.length} total</div>${rows.join('')}`
+    : '<p style="padding:40px;text-align:center;color:var(--g400)">No sessions found.</p>';
 }
 
 const navTitles = {schedule:'Schedule',homework:'Homework',tuition:'Tuition',participation:'Participation',settings:'Settings'};
