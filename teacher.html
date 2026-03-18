@@ -108,7 +108,7 @@ textarea.fc{resize:vertical;min-height:70px;}
   <nav class="nav">
     <div class="nav-lbl">MANAGEMENT</div>
     <div class="nav-item active" onclick="showSection('overview')"><span>📊</span>Class Overview</div>
-    <div class="nav-item" id="nav-detail" onclick="showSection('detail')" style="display:none"><span>👥</span>Class Detail</div>
+    <div class="nav-item" onclick="showSection('detail')"><span>👥</span>Class Management</div>
     <div class="nav-lbl">SCHEDULE</div>
     <div class="nav-item" onclick="showSection('weekly')"><span>🗓</span>Weekly Schedule</div>
     <div class="nav-lbl">FINANCE</div>
@@ -153,39 +153,13 @@ textarea.fc{resize:vertical;min-height:70px;}
       </div>
     </div>
 
-    <!-- CLASS DETAIL -->
+    <!-- CLASS DETAIL — Accordion cards per class -->
     <div id="section-detail" class="section">
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
-        <button class="btn btn-ghost" onclick="showSection('overview')" style="font-size:12px;padding:7px 14px;">‹ Back</button>
-        <div style="font-size:15px;font-weight:700" id="detailClassName">—</div>
-        <button class="btn btn-primary" onclick="openFinishModal()" style="margin-left:auto;">✅ Finish Session</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;">Class Management</div>
+        <span style="font-size:12px;color:var(--g400)">Click a class card to expand</span>
       </div>
-      <div class="session-card" id="sessionListCard">
-        <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;margin-bottom:14px;">📅 Class Schedule</div>
-        <div id="sessionList"><p style="color:var(--g400);font-size:13px;">Loading…</p></div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Attendance & Participation — Current Month</div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <span id="cycleLabel" style="font-size:12px;color:var(--g400)"></span>
-            <button class="btn btn-outline" onclick="saveAllScores()" style="font-size:12px;padding:7px 14px;">💾 Save All Scores</button>
-          </div>
-        </div>
-        <div class="tbl-wrap"><table id="detailTable"><thead id="detailThead"></thead><tbody id="detailTbody"><tr><td colspan="12" style="text-align:center;padding:40px;color:var(--g400)">Select a class to view details</td></tr></tbody></table></div>
-      </div>
-      <div class="card" style="margin-top:20px;">
-        <div class="card-header">
-          <div class="card-title">📝 Assigned Homework</div>
-          <button class="btn btn-primary" onclick="openAddHWModal()" style="font-size:12px;padding:7px 14px;">+ Add Homework</button>
-        </div>
-        <div class="tbl-wrap">
-          <table>
-            <thead><tr><th>Session</th><th>Type</th><th>Content</th><th>Deadline</th></tr></thead>
-            <tbody id="hwTbody"><tr><td colspan="4" style="text-align:center;padding:20px;color:var(--g400)">No homework yet</td></tr></tbody>
-          </table>
-        </div>
-      </div>
+      <div id="classAccordions"><p style="color:var(--g400);padding:40px;text-align:center;">Loading classes…</p></div>
     </div>
 
     <!-- WEEKLY SCHEDULE -->
@@ -229,22 +203,17 @@ textarea.fc{resize:vertical;min-height:70px;}
 
     <!-- DILIGENCE -->
     <div id="section-diligence" class="section">
-      <div class="card">
-        <div class="card-header"><div class="card-title">🏆 Diligence Report</div></div>
-        <div class="tbl-wrap">
-          <table>
-            <thead><tr><th>#</th><th>Student</th><th>Class</th><th>Sessions</th><th>Present</th><th>Absent</th><th>Late</th><th>Award</th></tr></thead>
-            <tbody id="diligenceTbody"><tr><td colspan="8" style="text-align:center;padding:40px;color:var(--g400)">Loading…</td></tr></tbody>
-          </table>
-        </div>
+      <div class="class-tabs" id="diligenceClassTabs">
+        <button class="ctab active" onclick="filterDiligence('all',this)">All Classes</button>
       </div>
+      <div id="diligenceContent"><p style="color:var(--g400);padding:40px;text-align:center">Loading…</p></div>
     </div>
 
     <!-- EXPORT -->
     <div id="section-export" class="section">
       <div style="background:white;border-radius:14px;padding:28px;box-shadow:var(--sh);">
         <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:8px;">Monthly Report Export</div>
-        <p style="color:var(--g400);font-size:13px;margin-bottom:20px;">Send a full monthly summary to <strong>duongthanhtu.dnu@gmail.com</strong>.</p>
+        <p style="color:var(--g400);font-size:13px;margin-bottom:20px;">Send a full monthly summary to <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="9efaebf1f0f9eaf6fff0f6eaebb0faf0ebdef9f3fff7f2b0fdf1f3">[email&#160;protected]</a></strong>.</p>
         <div style="display:flex;gap:12px;flex-wrap:wrap;">
           <button class="btn btn-primary" onclick="doExport()">📧 Email Report</button>
           <button class="btn btn-outline" onclick="previewReport()">👁 Preview</button>
@@ -343,7 +312,7 @@ textarea.fc{resize:vertical;min-height:70px;}
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 const GAS = 'https://script.google.com/macros/s/AKfycbxFoUNaIKvVw5d4T96_X_K89W0lKbJTCnZQTUgKqPjxJO0Sj8qnILeP7rranGYdkbKv/exec';
 const sess = JSON.parse(localStorage.getItem('userSession')||'null');
 if (!sess || sess.Role !== 'Teacher') { location.href = 'index.html'; }
@@ -374,7 +343,7 @@ async function loadOverview() {
     buildClassTabs();
     renderOverview('all');
     renderDiligence();
-    renderTuitionTable('all');
+    loadTuitionTable('all');
   } catch(e) { toast('Connection error','err'); }
 }
 
@@ -427,21 +396,143 @@ function renderOverview(classId) {
   }).join('');
 }
 
-// ── Class Detail ──────────────────────────────────────────────
+// ── Class Management (accordion) ──────────────────────────────
+async function loadClassManagement() {
+  const container = document.getElementById('classAccordions');
+  if(!classData.length){ container.innerHTML='<p style="color:var(--g400);padding:40px;text-align:center;">Load Class Overview first.</p>'; return; }
+  container.innerHTML = classData.map(cls=>`
+    <div class="class-accordion" id="acc-${cls.classId.replace(/ /g,'_')}" style="background:white;border-radius:14px;box-shadow:var(--sh);margin-bottom:16px;overflow:hidden;">
+      <div onclick="toggleAcc('${cls.classId}')" style="padding:20px 24px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid transparent;" class="acc-head-${cls.classId.replace(/ /g,'_')}">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:44px;height:44px;background:var(--red);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-family:'Playfair Display',serif;font-size:18px;font-weight:900;flex-shrink:0">${cls.classId.replace(/[^0-9]/g,'').slice(-2)||'?'}</div>
+          <div>
+            <div style="font-size:16px;font-weight:700">${cls.classId}</div>
+            <div style="font-size:12px;color:var(--g400);margin-top:2px">${cls.students.length} students</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button onclick="event.stopPropagation();archiveClassUI('${cls.classId}')" style="padding:5px 12px;border:1px solid var(--g200);background:transparent;border-radius:6px;font-size:11px;color:var(--g400);cursor:pointer;">Archive</button>
+          <span class="acc-arrow-${cls.classId.replace(/ /g,'_')}" style="font-size:12px;color:var(--g400);transition:transform .3s">▼</span>
+        </div>
+      </div>
+      <div class="acc-body-${cls.classId.replace(/ /g,'_')}" style="display:none;padding:20px 24px;">
+        <!-- Action buttons -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+          <button class="btn btn-primary" onclick="openFinishModalFor('${cls.classId}')">✅ End Today's Session</button>
+          <button class="btn btn-outline" onclick="openAddHWModalFor('${cls.classId}')">📝 Assign Homework</button>
+        </div>
+        <!-- Loading placeholder -->
+        <div id="acc-detail-${cls.classId.replace(/ /g,'_')}" style="color:var(--g400);font-size:13px;">Click "End Today's Session" to load details…</div>
+      </div>
+    </div>`).join('');
+}
+
+let accOpenId = null;
+async function toggleAcc(classId) {
+  const key = classId.replace(/ /g,'_');
+  const body = document.querySelector(`.acc-body-${key}`);
+  const arrow = document.querySelector(`.acc-arrow-${key}`);
+  const head = document.querySelector(`.acc-head-${key}`);
+  const isOpen = body.style.display !== 'none';
+  if(isOpen){ body.style.display='none'; arrow.style.transform=''; head.style.borderBottomColor='transparent'; return; }
+  body.style.display='block'; arrow.style.transform='rotate(180deg)'; head.style.borderBottomColor='var(--g100)';
+  currentClass = classId;
+  accOpenId = classId;
+  await loadAccDetail(classId);
+}
+
+async function loadAccDetail(classId) {
+  const key = classId.replace(/ /g,'_');
+  const el = document.getElementById(`acc-detail-${key}`);
+  el.innerHTML = '<span style="color:var(--g400)">Loading…</span>';
+  try {
+    const r = await api('getClassDetail',{classId});
+    if(!r.success){ el.innerHTML='<span style="color:var(--red)">Error: '+r.message+'</span>'; return; }
+    allSchedules[classId] = r.schedule||[];
+    const typeNames={W:'Writing',L:'Listening',S:'Speaking',V:'Vocab'};
+    const today = new Date().toISOString().split('T')[0];
+    const cols = r.currentCycleSess||[];
+    const hwHtml = (!r.homework||!r.homework.length) ? '<p style="color:var(--g400);font-size:13px;padding:12px 0">No homework assigned yet.</p>' :
+      `<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px">
+        <thead><tr style="background:var(--g100)"><th style="padding:8px 12px;text-align:left">Session</th><th style="padding:8px 12px;text-align:left">Type</th><th style="padding:8px 12px;text-align:left">Content</th><th style="padding:8px 12px;text-align:left">Deadline</th></tr></thead>
+        <tbody>${r.homework.map(h=>`<tr><td style="padding:8px 12px;border-bottom:1px solid var(--g100)">${h.dayLabel||h.sessionDate}</td><td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span style="background:var(--g100);padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700">${typeNames[h.type]||h.type}</span></td><td style="padding:8px 12px;border-bottom:1px solid var(--g100)">${h.content}</td><td style="padding:8px 12px;border-bottom:1px solid var(--g100);font-weight:600">${h.deadline}</td></tr>`).join('')}</tbody>
+      </table>`;
+
+    const studentsHtml = (!r.students||!r.students.length) ? '<p style="color:var(--g400)">No students.</p>' :
+      `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:var(--g100)">
+          <th style="padding:9px 12px;text-align:left">Student</th>
+          ${cols.map(s=>`<th style="padding:9px 12px;text-align:center;font-size:11px">${s.dayLabel||s.date}</th>`).join('')}
+          <th style="padding:9px 12px;text-align:left">Today</th>
+          <th style="padding:9px 12px;text-align:left">Score</th>
+        </tr></thead>
+        <tbody>${r.students.map(s=>{
+          const dots=cols.map(cs=>{
+            const rec=s.currentCycle.find(r2=>r2.date===cs.date);
+            if(!rec||!rec.status) return '<td style="text-align:center;padding:6px"><div style="width:28px;height:28px;background:var(--g100);border-radius:6px;margin:auto;display:flex;align-items:center;justify-content:center;color:var(--g400);font-size:10px">—</div></td>';
+            const bg=rec.status==='Absent'?'#fee2e2':rec.status==='Late'?'#fef9c3':'var(--red)';
+            const co=rec.status==='Absent'?'#991b1b':rec.status==='Late'?'#854d0e':'white';
+            const lbl=rec.score>0?rec.score:(rec.status==='Absent'?'A':rec.status==='Late'?'L':'✓');
+            return `<td style="text-align:center;padding:6px"><div style="width:28px;height:28px;background:${bg};border-radius:6px;margin:auto;display:flex;align-items:center;justify-content:center;color:${co};font-size:11px;font-weight:700">${lbl}</div></td>`;
+          }).join('');
+          const tr=s.currentCycle.find(r2=>r2.date===today);
+          const cs=tr?tr.status:'Present';
+          return `<tr>
+            <td style="padding:9px 12px;border-bottom:1px solid var(--g100)"><strong>${s.name}</strong></td>
+            ${dots}
+            <td style="padding:6px 12px;border-bottom:1px solid var(--g100)">
+              <select style="padding:4px 7px;border:2px solid var(--g200);border-radius:7px;font-size:12px;cursor:pointer;background:white" data-name="${s.name}" data-date="${today}" onchange="markAttendance(this)">
+                <option value="Present" ${cs==='Present'?'selected':''}>✅ Present</option>
+                <option value="Late" ${cs==='Late'?'selected':''}>🕐 Late</option>
+                <option value="Absent" ${cs==='Absent'?'selected':''}>❌ Absent</option>
+              </select>
+            </td>
+            <td style="padding:6px 12px;border-bottom:1px solid var(--g100)">
+              <input type="number" class="sinput score-field" min="0" max="10" value="${tr?tr.score:''}" placeholder="0-10" data-name="${s.name}" data-date="${today}"/>
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`;
+
+    el.innerHTML = `
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--g600)">📝 Assigned Homework</div>
+      ${hwHtml}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px;">
+        <div style="font-size:13px;font-weight:600;color:var(--g600)">👥 Attendance & Scores — Current Month</div>
+        <button class="btn btn-outline" onclick="saveAllScores()" style="font-size:11px;padding:5px 12px">💾 Save Scores</button>
+      </div>
+      ${studentsHtml}`;
+  } catch(e){ el.innerHTML='<span style="color:var(--red)">Connection error</span>'; }
+}
+
+async function archiveClassUI(classId) {
+  if(!confirm(`Archive class "${classId}"? It will be hidden from the dashboard.`)) return;
+  try {
+    const r=await api('archiveClass',{classId,archive:true});
+    if(r.success){ toast('Class archived','ok'); await loadOverview(); loadClassManagement(); }
+    else toast('Error: '+r.message,'err');
+  } catch(e){toast('Connection error','err');}
+}
+
+function openFinishModalFor(classId) {
+  currentClass=classId;
+  openFinishModal();
+}
+function openAddHWModalFor(classId) {
+  currentClass=classId;
+  openAddHWModal();
+}
+
+// Keep openClassDetail for backward compat (called from overview)
 async function openClassDetail(classId) {
   currentClass=classId;
-  document.getElementById('detailClassName').textContent='Class '+classId;
-  document.getElementById('nav-detail').style.display='';
   showSection('detail');
-  document.getElementById('detailTbody').innerHTML='<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--g400)">Loading…</td></tr>';
-  try {
-    const r=await api('getClassDetail',{classId});
-    if(!r.success){toast('Error: '+r.message,'err');return;}
-    renderSessionList(r.schedule);
-    renderDetailTable(r.students,r.currentCycleSess);
-    renderHWTable(r.homework);
-    allSchedules[classId]=r.schedule; // cache
-  } catch(e){toast('Connection error','err');}
+  // Find and open the accordion for this class
+  setTimeout(()=>{
+    const key=classId.replace(/ /g,'_');
+    const body=document.querySelector(`.acc-body-${key}`);
+    if(body&&body.style.display==='none') toggleAcc(classId);
+  },100);
 }
 
 function skillClass(skill) {
@@ -600,68 +691,216 @@ function changeWeek(dir) {
 }
 
 // ── Tuition Tracker ───────────────────────────────────────────
-function filterTuition(classId,btn) {
+let tuitionData = {}; // cache per classId
+
+function filterTuition(classId, btn) {
   document.querySelectorAll('#tuitionClassTabs .ctab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  renderTuitionTable(classId);
+  loadTuitionTable(classId);
 }
 
-function renderTuitionTable(classId) {
-  const filtered=classId==='all'?classData:classData.filter(c=>c.classId===classId);
-  const all=filtered.flatMap(c=>c.students);
-  document.getElementById('tuitionTitle').textContent=classId==='all'?'Tuition Tracker — All Classes':'Tuition Tracker — '+classId;
+async function loadTuitionTable(classId) {
+  const el = document.getElementById('tuitionTbody');
+  document.getElementById('tuitionTitle').textContent =
+    classId==='all' ? 'Tuition Tracker — All Classes' : 'Tuition Tracker — '+classId;
 
-  if(!all.length){
-    document.getElementById('tuitionTbody').innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--g400)">No data</td></tr>';
+  if(classId==='all') {
+    // Summary view from classData
+    const all = classData.flatMap(cls=>cls.students);
+    if(!all.length){ el.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--g400)">No data</td></tr>'; return; }
+    el.innerHTML = all.map((s,i)=>{
+      const sin=s.total%8||(s.total>0?8:0);
+      const pct=Math.round(sin/8*100);
+      return `<tr>
+        <td style="color:var(--g400)">${i+1}</td>
+        <td><strong>${s.name}</strong></td>
+        <td><span style="background:var(--g100);padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600">${s.class}</span></td>
+        <td><strong>${s.monthsUsed}</strong> <span style="color:var(--g400);font-size:12px">month(s)</span></td>
+        <td>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600">${sin}/8</span><span style="color:var(--g400)">${pct}%</span></div>
+          <div style="background:var(--g100);border-radius:99px;height:6px"><div style="width:${pct}%;height:100%;border-radius:99px;background:var(--red)"></div></div>
+        </td>
+        <td>—</td>
+      </tr>`;
+    }).join('');
     return;
   }
 
-  document.getElementById('tuitionTbody').innerHTML=all.map((s,i)=>{
-    const sessInCycle=s.total%8||(s.total>0?8:0);
-    const pct=Math.round(sessInCycle/8*100);
-    // Build month blocks from total sessions
-    const months=Math.floor(s.total/8);
-    const monthBlocks=Array(months+1).fill(0).map((_,mo)=>{
-      const start=mo*8, end=Math.min(start+8,s.total);
-      const count=end-start;
-      const dots=Array(8).fill(0).map((_,j)=>{
-        if(j<count) return `<div class="tm-dot p" title="Session ${start+j+1}">✓</div>`;
-        return `<div class="tm-dot rem">${j+1}</div>`;
-      }).join('');
-      return `<div style="margin-bottom:6px;">
-        <div style="font-size:10px;font-weight:600;color:var(--g400);margin-bottom:4px">Month ${mo+1} ${count===8?'<span style="color:#16a34a">✓ Complete</span>':''}</div>
-        <div style="display:flex;gap:3px">${dots}</div>
+  el.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--g400)">Loading payment data…</td></tr>';
+  try {
+    const r = await api('getTuitionForClass',{classId});
+    if(!r.success){ el.innerHTML='<tr><td colspan="6" style="color:var(--red);padding:20px">Error: '+r.message+'</td></tr>'; return; }
+    tuitionData[classId] = r.students;
+    renderTuitionRows(classId);
+  } catch(e){ el.innerHTML='<tr><td colspan="6" style="color:var(--red);padding:20px">Connection error</td></tr>'; }
+}
+
+function renderTuitionRows(classId) {
+  const students = tuitionData[classId]||[];
+  const el = document.getElementById('tuitionTbody');
+  if(!students.length){ el.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--g400)">No students</td></tr>'; return; }
+  el.innerHTML = students.map((s,i)=>{
+    const sin = s.sessInCycle;
+    const pct = Math.round(sin/8*100);
+    const totalMonths = s.monthsCompleted + (sin>0?1:0);
+    // Build payment columns for each month
+    const monthCols = Array(Math.max(totalMonths,1)).fill(0).map((_,mo)=>{
+      const moNo = String(mo+1);
+      const payment = s.monthPayments[moNo];
+      const isComplete = mo < s.monthsCompleted || (mo===s.monthsCompleted && sin===0);
+      if(!isComplete && mo >= s.monthsCompleted) {
+        return `<div style="margin-bottom:6px;padding:6px 10px;border-radius:7px;background:var(--g100);opacity:.4">
+          <div style="font-size:10px;color:var(--g400)">Month ${moNo}</div>
+          <div style="font-size:11px;color:var(--g400)">In progress (${sin}/8)</div>
+        </div>`;
+      }
+      const paid = !!payment;
+      return `<div style="margin-bottom:6px;padding:8px 10px;border-radius:7px;border:1px solid ${paid?'#86efac':'#fca5a5'};background:${paid?'#f0fdf4':'#fff5f5'}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:700;color:var(--g600)">Month ${moNo}</span>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="checkbox" ${paid?'checked':''} onchange="toggleTuitionPaid('${classId}','${s.email}','${moNo}',this)" style="width:14px;height:14px;cursor:pointer;accent-color:var(--red)"/>
+            <span style="font-size:11px;font-weight:600;color:${paid?'#16a34a':'#dc2626'}">${paid?'Paid':'Unpaid'}</span>
+          </label>
+        </div>
+        ${paid?`<div style="display:flex;align-items:center;gap:6px">
+          <input type="date" value="${payment.date||''}" onchange="updatePaymentDate('${classId}','${s.email}','${moNo}',this)" style="font-size:11px;border:1px solid #86efac;border-radius:5px;padding:2px 6px;color:#166534;background:transparent;cursor:pointer"/>
+        </div>`:''}
       </div>`;
     }).join('');
-
     return `<tr>
       <td style="color:var(--g400)">${i+1}</td>
-      <td><strong>${s.name}</strong></td>
-      <td><span style="background:var(--g100);padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600">${s.class}</span></td>
+      <td><strong>${s.name}</strong><br><span style="font-size:11px;color:var(--g400)">${s.email}</span></td>
+      <td><span style="background:var(--g100);padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600">${classId}</span></td>
       <td>
-        <div style="font-size:18px;font-weight:700;font-family:'Playfair Display',serif">${months}</div>
-        <div style="font-size:11px;color:var(--g400)">${s.total} sessions total</div>
+        <div style="font-size:20px;font-weight:700;font-family:'Playfair Display',serif">${s.monthsCompleted}</div>
+        <div style="font-size:11px;color:var(--g400)">${s.total} sessions</div>
       </td>
-      <td style="min-width:160px">
-        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600">${sessInCycle}/8</span><span style="color:var(--g400)">${pct}%</span></div>
+      <td style="min-width:150px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600">${sin}/8</span><span style="color:var(--g400)">${pct}%</span></div>
         <div style="background:var(--g100);border-radius:99px;height:6px"><div style="width:${pct}%;height:100%;border-radius:99px;background:var(--red)"></div></div>
       </td>
-      <td style="min-width:220px">${monthBlocks}</td>
+      <td style="min-width:200px">${monthCols}</td>
     </tr>`;
   }).join('');
 }
 
+async function toggleTuitionPaid(classId, email, monthNo, checkbox) {
+  const paid = checkbox.checked;
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    await api('markTuitionPaid',{classId,studentEmail:email,monthNo,paid,paidDate:paid?today:''});
+    // Update local cache
+    const student = (tuitionData[classId]||[]).find(s=>s.email===email);
+    if(student) {
+      if(paid) student.monthPayments[monthNo]={date:today,note:''};
+      else delete student.monthPayments[monthNo];
+    }
+    renderTuitionRows(classId);
+    toast(paid?'✓ Marked as paid':'Marked as unpaid','ok');
+  } catch(e){ toast('Error saving','err'); checkbox.checked=!paid; }
+}
+
+async function updatePaymentDate(classId, email, monthNo, input) {
+  const newDate = input.value;
+  if(!newDate) return;
+  try {
+    await api('markTuitionPaid',{classId,studentEmail:email,monthNo,paid:true,paidDate:newDate});
+    const student = (tuitionData[classId]||[]).find(s=>s.email===email);
+    if(student && student.monthPayments[monthNo]) student.monthPayments[monthNo].date=newDate;
+    toast('Payment date updated','ok');
+  } catch(e){ toast('Error','err'); }
+}
+
+function renderTuitionTable(classId) { loadTuitionTable(classId); } // compat alias
+
 // ── Diligence ─────────────────────────────────────────────────
+let diligenceCurrentClass = 'all';
+
+function filterDiligence(classId, btn) {
+  document.querySelectorAll('#diligenceClassTabs .ctab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  diligenceCurrentClass = classId;
+  loadDiligence(classId);
+}
+
+async function loadDiligence(classId) {
+  const el = document.getElementById('diligenceContent');
+  if(classId==='all') {
+    // Show all classes summary
+    const allSt = classData.flatMap(c=>c.students);
+    el.innerHTML = `<div class="card"><div class="card-header"><div class="card-title">Overall Diligence</div></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>#</th><th>Student</th><th>Class</th><th>Sessions</th><th>Present</th><th>Late</th><th>Absent</th><th>Status</th></tr></thead>
+        <tbody>${allSt.map((s,i)=>`<tr>
+          <td>${i+1}</td><td><strong>${s.name}</strong></td><td>${s.class}</td>
+          <td>${s.total}</td>
+          <td><span class="badge b-present">${s.present}</span></td>
+          <td><span class="badge b-late">${s.late}</span></td>
+          <td><span class="badge b-absent">${s.absent}</span></td>
+          <td>${s.absent===0&&s.late===0?'<span class="badge b-star">⭐ Diligent</span>':'—'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div></div>`;
+    return;
+  }
+  el.innerHTML = '<p style="padding:40px;text-align:center;color:var(--g400)">Loading rewards data…</p>';
+  try {
+    const r = await api('getRewards',{classId});
+    if(!r.success){ el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>'; return; }
+    el.innerHTML = r.months.map(mo=>`
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+          <div class="card-title">Month ${mo.month}</div>
+          <span style="font-size:12px;color:var(--g400)">${mo.dates.length} sessions</span>
+        </div>
+        <!-- Rewards -->
+        <div style="padding:16px 22px;border-bottom:1px solid var(--g100);display:flex;gap:16px;flex-wrap:wrap;">
+          ${mo.rewards.diligent1?`<div style="background:linear-gradient(135deg,#fde047,#f59e0b);border-radius:10px;padding:12px 16px;min-width:180px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.5px;color:#7c2d12">🏆 MOST DILIGENT #1</div>
+            <div style="font-size:15px;font-weight:700;margin-top:4px">${mo.rewards.diligent1.name}</div>
+            <div style="font-size:11px;color:rgba(0,0,0,.5);margin-top:2px">${mo.rewards.diligent1.present}P · ${mo.rewards.diligent1.absent}A · ${mo.rewards.diligent1.late}L · ${mo.rewards.diligent1.avgScore}pts</div>
+          </div>`:''}
+          ${mo.rewards.diligent2?`<div style="background:linear-gradient(135deg,#e2e8f0,#cbd5e1);border-radius:10px;padding:12px 16px;min-width:180px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.5px;color:#475569">🥈 MOST DILIGENT #2</div>
+            <div style="font-size:15px;font-weight:700;margin-top:4px">${mo.rewards.diligent2.name}</div>
+            <div style="font-size:11px;color:rgba(0,0,0,.4);margin-top:2px">${mo.rewards.diligent2.present}P · ${mo.rewards.diligent2.absent}A · ${mo.rewards.diligent2.late}L · ${mo.rewards.diligent2.avgScore}pts</div>
+          </div>`:''}
+          ${mo.rewards.topParticipation?`<div style="background:linear-gradient(135deg,#dbeafe,#93c5fd);border-radius:10px;padding:12px 16px;min-width:180px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.5px;color:#1e40af">⭐ TOP PARTICIPATION</div>
+            <div style="font-size:15px;font-weight:700;margin-top:4px">${mo.rewards.topParticipation.name}</div>
+            <div style="font-size:11px;color:rgba(0,0,0,.4);margin-top:2px">Avg score: ${mo.rewards.topParticipation.avgScore}/10</div>
+          </div>`:''}
+        </div>
+        <!-- Stats table -->
+        <div class="tbl-wrap"><table>
+          <thead><tr>
+            <th>Student</th><th>Present</th><th>Absent</th><th>Late</th>
+            <th>Avg Score</th><th>Tuition Paid</th><th>Diligent?</th>
+          </tr></thead>
+          <tbody>${mo.students.sort((a,b)=>b.diligent-a.diligent||b.avgScore-a.avgScore).map(s=>`<tr>
+            <td><strong>${s.name}</strong></td>
+            <td><span class="badge b-present">${s.present}</span></td>
+            <td><span class="badge b-absent">${s.absent}</span></td>
+            <td><span class="badge b-late">${s.late}</span></td>
+            <td>${s.avgScore>0?s.avgScore+'/10':'—'}</td>
+            <td>${s.tuitionPaid?'<span class="badge b-paid">✓ Paid</span>':'<span class="badge b-unpaid">Unpaid</span>'}</td>
+            <td>${s.diligent?'<span class="badge b-star">⭐</span>':'—'}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>`).join('') || '<p style="padding:40px;text-align:center;color:var(--g400)">No attendance data yet.</p>';
+  } catch(e){ el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>'; }
+}
+
 function renderDiligence() {
-  const all=classData.flatMap(c=>c.students);
-  document.getElementById('diligenceTbody').innerHTML=all.length?all.map((s,i)=>`<tr>
-    <td>${i+1}</td><td><strong>${s.name}</strong></td><td>${s.class}</td>
-    <td>${s.total}</td>
-    <td><span class="badge b-present">${s.present}</span></td>
-    <td><span class="badge b-absent">${s.absent}</span></td>
-    <td><span class="badge b-late">${s.late}</span></td>
-    <td>${s.absent===0&&s.late===0?'<span class="badge b-star">⭐ Diligent</span>':'<span style="color:var(--g400);font-size:12px">—</span>'}</td>
-  </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--g400)">No data</td></tr>';
+  // Build diligence class tabs
+  const el2 = document.getElementById('diligenceClassTabs');
+  while(el2.children.length>1) el2.removeChild(el2.lastChild);
+  classData.forEach(cls=>{
+    const b=document.createElement('button'); b.className='ctab'; b.textContent=cls.classId;
+    b.onclick=()=>filterDiligence(cls.classId,b);
+    el2.appendChild(b);
+  });
+  loadDiligence('all');
 }
 
 // ── Export ────────────────────────────────────────────────────
@@ -758,23 +997,14 @@ async function refreshData(){
 }
 
 // ── Navigation ────────────────────────────────────────────────
-const sectionTitles={overview:'Class Overview',detail:'Class Detail',weekly:'Weekly Schedule',tuition:'Tuition Tracker',diligence:'Diligence Report',export:'Monthly Export',settings:'Settings'};
+const sectionTitles={overview:'Class Overview',detail:'Class Management',weekly:'Weekly Schedule',tuition:'Tuition Tracker',diligence:'Diligence Report',export:'Monthly Export',settings:'Settings'};
 function showSection(name){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('section-'+name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.textContent.trim().startsWith(sectionTitles[name].split(' ')[0])));
   document.getElementById('pageTitle').textContent=sectionTitles[name];
   if(name==='weekly') loadWeekly();
+  if(name==='detail') loadClassManagement();
 }
 function closeModal(id){document.getElementById(id).classList.remove('show');}
-function doLogout(){localStorage.removeItem('userSession');location.href='index.html';}
-function toast(msg,type=''){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.className='toast '+type+' show';
-  setTimeout(()=>t.classList.remove('show'),3500);
-}
-
-loadOverview();
-</script>
-</body>
-</html>
+function doLogout(){localStorage.removeItem('userSession');location.href='i
