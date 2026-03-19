@@ -768,6 +768,11 @@ async function loadTuition(classId) {
 
   el.innerHTML = '<p style="padding:30px;text-align:center;color:var(--g400)">Loading payment data…</p>';
   try {
+    // Load schedule for date labels if not cached
+    if (!allSchedules[classId]) {
+      var rs = await api('getClassDetail',{classId:classId});
+      if (rs.success) allSchedules[classId] = rs.schedule||[];
+    }
     var r = await api('getTuitionForClass', {classId:classId});
     if (!r.success) { el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>'; return; }
     tuitionCache[classId] = r.students;
@@ -777,143 +782,193 @@ async function loadTuition(classId) {
 
 function renderTuitionGrid(classId) {
   var students = tuitionCache[classId] || [];
+  var schedSess = allSchedules[classId] || []; // for session dates
   var el = document.getElementById('tuitionContent');
   if (!students.length) { el.innerHTML='<p style="padding:40px;text-align:center;color:var(--g400)">No students</p>'; return; }
 
-  // Find max months to determine columns
+  // Find max months
   var maxMonths = 0;
   students.forEach(function(s){
-    var total = s.monthsCompleted + (s.sessInCycle>0?1:0);
-    if(total>maxMonths) maxMonths=total;
+    var t = s.monthsCompleted + (s.sessInCycle>0?1:0);
+    if(t>maxMonths) maxMonths=t;
   });
   maxMonths = Math.max(maxMonths, 1);
 
-  // Build month column headers
-  var monthHeaders = '';
+  // Get scheduled session dates (non-Day0), grouped into months of 8
+  var schedDates = schedSess
+    .filter(function(s){ return s.date && s.dayLabel.toLowerCase().replace(/ /g,'').replace('day','')!=='0'; })
+    .map(function(s){ return s.date; });
+
+  // Month header row (colspan 9 = 8 dots + 1 paid)
+  var monthHeaders = '<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:2;min-width:110px;max-width:110px;width:110px"></th>';
   for (var mo=1; mo<=maxMonths; mo++) {
-    monthHeaders += '<th colspan="9" style="padding:8px 4px;text-align:center;background:'+(mo%2===0?'#e8e6e2':'var(--g100)')+';border-right:2px solid var(--g200);font-size:11px;font-weight:700;color:var(--g600)">Month '+mo+'</th>';
+    var bg = mo%2===0 ? '#e8e6e2' : 'var(--g100)';
+    monthHeaders += '<th colspan="9" style="padding:7px 4px;text-align:center;background:'+bg+';border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700;color:var(--g600)">Month '+mo+'</th>';
   }
 
-  // Build session sub-headers: 8 session dots + 1 paid column per month
-  var sessHeaders = '';
+  // Session sub-header row: date under session number
+  var sessHeaders = '<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:2;"></th>';
   for (var mo=1; mo<=maxMonths; mo++) {
-    for (var s=1; s<=8; s++) {
-      sessHeaders += '<th style="padding:6px 2px;text-align:center;background:var(--g100);font-size:10px;color:var(--g400);width:32px">'+s+'</th>';
+    var bg = mo%2===0 ? '#eae8e4' : '#f5f4f2';
+    for (var si=1; si<=8; si++) {
+      var globalIdx = (mo-1)*8 + (si-1);
+      var dateLabel = schedDates[globalIdx] ? schedDates[globalIdx].split('-').slice(1).reverse().join('/') : ''; // DD/MM
+      sessHeaders += '<th style="padding:4px 1px;text-align:center;background:'+bg+';font-size:9px;color:var(--g400);width:34px;min-width:34px">'+
+        '<div style="font-weight:700;color:var(--g600)">'+si+'</div>'+
+        '<div style="font-size:8px;color:var(--g400);white-space:nowrap">'+dateLabel+'</div>'+
+      '</th>';
     }
-    sessHeaders += '<th style="padding:6px 6px;text-align:center;background:#f0fdf4;border-right:2px solid var(--g200);font-size:10px;color:#166534;white-space:nowrap">Paid?</th>';
+    sessHeaders += '<th style="padding:4px 6px;text-align:center;background:#f0fdf4;border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:10px;color:#166534;white-space:nowrap;min-width:90px">Paid?</th>';
   }
 
-  // Build rows
-  var rows = students.map(function(s, i) {
+  // Build rows — session dots are DOM elements added after innerHTML
+  var rows = students.map(function(s) {
     var cells = '';
     for (var mo=0; mo<maxMonths; mo++) {
       var moNo = String(mo+1);
-      var chunkStart = mo*8;
-      var chunkEnd   = mo*8+8;
-      // Get attendance for this month chunk
-      // We use sessInCycle and monthsCompleted to determine which sessions are done
-      var sessInThisMonth = 0;
-      if (mo < s.monthsCompleted) sessInThisMonth = 8;
-      else if (mo === s.monthsCompleted) sessInThisMonth = s.sessInCycle;
-
-      // 8 session dots
+      var sessInThisMonth = mo < s.monthsCompleted ? 8 : (mo===s.monthsCompleted ? s.sessInCycle : 0);
+      // 8 clickable session dots
       for (var si=0; si<8; si++) {
-        if (si < sessInThisMonth) {
-          // Attended — green tick
-          cells += '<td style="padding:3px 2px;text-align:center">'+
-            '<div style="width:26px;height:26px;background:#16a34a;border-radius:5px;margin:auto;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:700;">&#10003;</div>'+
-          '</td>';
-        } else {
-          // Not yet
-          cells += '<td style="padding:3px 2px;text-align:center">'+
-            '<div style="width:26px;height:26px;background:var(--g100);border-radius:5px;margin:auto;border:1px dashed var(--g200);"></div>'+
-          '</td>';
-        }
+        var globalIdx = mo*8 + si;
+        var sessDate = schedDates[globalIdx] || '';
+        var dotId = 'dot-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+globalIdx;
+        var hasSess = si < sessInThisMonth;
+        cells += '<td style="padding:2px 1px;text-align:center" id="'+dotId+'">'+
+          (hasSess
+            ? '<div style="width:28px;height:28px;background:#16a34a;border-radius:5px;margin:auto;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;cursor:pointer" title="Click to change">&#10003;</div>'
+            : '<div style="width:28px;height:28px;background:var(--g100);border-radius:5px;margin:auto;border:1px dashed var(--g200);cursor:pointer" title="'+sessDate+'"></div>')+
+        '</td>';
       }
-
-      // Paid column — use data attributes to avoid nested quote issues
-      var payment = s.monthPayments[moNo];
-      var paid = !!payment;
-      var monthDone = mo < s.monthsCompleted || (mo===s.monthsCompleted && s.sessInCycle>0);
+      // Paid cell placeholder
       var paidCellId = 'pc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+moNo;
-      cells += '<td style="padding:3px 6px;text-align:center;border-right:2px solid var(--g200);background:#f0fdf4;" id="'+paidCellId+'">'+
-        (monthDone ? '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">loading...</div>'
-                   : '<span style="color:var(--g200);font-size:10px">—</span>')+
+      var monthDone = mo < s.monthsCompleted || (mo===s.monthsCompleted && s.sessInCycle>0);
+      cells += '<td style="padding:3px 6px;border-right:2px solid var(--g200);border-left:1px solid var(--g200);background:#f0fdf4;min-width:90px" id="'+paidCellId+'">'+
+        (monthDone ? '' : '<span style="color:var(--g200);font-size:10px">—</span>')+
       '</td>';
     }
-
     return '<tr>'+
-      '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);white-space:nowrap;position:sticky;left:0;background:white;z-index:1;">'+
-        '<strong style="font-size:13px">'+s.name+'</strong>'+
-        '<div style="font-size:10px;color:var(--g400)">'+s.total+' sessions</div>'+
-      '</td>'+
-      cells+
-    '</tr>';
+      '<td style="padding:6px 10px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:110px;max-width:110px;width:110px;overflow:hidden;">'+
+        '<div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+s.name+'</div>'+
+        '<div style="font-size:9px;color:var(--g400)">'+s.total+' sess</div>'+
+      '</td>'+cells+'</tr>';
   }).join('');
 
   el.innerHTML =
     '<div style="overflow-x:auto">'+
-    '<table style="border-collapse:collapse;font-size:12px;min-width:100%">'+
-      '<thead>'+
-        '<tr>'+
-          '<th style="padding:8px 13px;text-align:left;background:var(--g900);color:white;position:sticky;left:0;z-index:2;font-size:12px;white-space:nowrap">Student</th>'+
-          monthHeaders+
-        '</tr>'+
-        '<tr>'+
-          '<th style="padding:6px 13px;background:var(--g900);position:sticky;left:0;z-index:2;"></th>'+
-          sessHeaders+
-        '</tr>'+
-      '</thead>'+
+    '<table style="border-collapse:collapse;font-size:12px">'+
+      '<thead><tr>'+monthHeaders+'</tr><tr>'+sessHeaders+'</tr></thead>'+
       '<tbody>'+rows+'</tbody>'+
     '</table></div>';
 
-  // Wire up paid cells using DOM (avoids nested quote issues in HTML strings)
+  // Wire up DOM elements after render
   students.forEach(function(s) {
+    var sessInAll = s.monthsCompleted*8 + s.sessInCycle;
     for (var mo=0; mo<maxMonths; mo++) {
       var moNo = String(mo+1);
+      // Session dots — make clickable
+      for (var si=0; si<8; si++) {
+        var globalIdx = mo*8+si;
+        var dotId = 'dot-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+globalIdx;
+        var dotCell = document.getElementById(dotId);
+        if (!dotCell) continue;
+        var sessDate = schedDates[globalIdx] || '';
+        if (sessDate) {
+          (function(cell, cid, email, date, idx, attended){
+            cell.querySelector('div').onclick = function() {
+              showAttPopup(cell, cid, email, date, attended);
+            };
+          })(dotCell, classId, s.email, sessDate, globalIdx, globalIdx < sessInAll);
+        }
+      }
+      // Paid cells
       var monthDone = mo < s.monthsCompleted || (mo===s.monthsCompleted && s.sessInCycle>0);
       if (!monthDone) continue;
       var cellId = 'pc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+moNo;
       var cell = document.getElementById(cellId);
       if (!cell) continue;
       var payment = s.monthPayments[moNo];
-      var paid = !!payment;
-      buildPaidCell(cell, classId, s.email, moNo, paid, paid ? payment.date : '');
+      buildPaidCell(cell, classId, s.email, moNo, !!payment, payment ? payment.date : '');
     }
   });
 }
 
-function buildPaidCell(cell, classId, email, moNo, paid, paidDate) {
-  var wrap = document.createElement('div');
-  wrap.style = 'display:flex;flex-direction:column;align-items:center;gap:2px;';
+// Show mini popup to set attendance status on a session dot
+function showAttPopup(cell, classId, email, date, currentlyAttended) {
+  // Remove any existing popup
+  var existing = document.getElementById('attPopup');
+  if (existing) existing.remove();
 
-  var label = document.createElement('label');
-  label.style = 'display:flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap;';
+  var popup = document.createElement('div');
+  popup.id = 'attPopup';
+  popup.style = 'position:fixed;z-index:999;background:white;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.2);padding:12px;display:flex;flex-direction:column;gap:6px;min-width:140px;';
+
+  var title = document.createElement('div');
+  title.style = 'font-size:11px;font-weight:700;color:var(--g600);margin-bottom:2px;border-bottom:1px solid var(--g100);padding-bottom:6px;';
+  title.textContent = date.split('-').slice(1).reverse().join('/'); // DD/MM/YYYY
+  popup.appendChild(title);
+
+  [['Present','#16a34a','✓'],['Late','#d97706','⏱'],['Absent','#dc2626','✗'],['—  Remove','#9d9b96','✕']].forEach(function(opt){
+    var btn = document.createElement('button');
+    btn.style = 'padding:6px 10px;border:none;border-radius:6px;background:'+opt[1]+'18;color:'+opt[1]+';font-size:12px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px;';
+    btn.innerHTML = '<span style="font-size:14px">'+opt[2]+'</span> '+opt[0];
+    btn.onmouseenter = function(){ this.style.background=opt[1]+'30'; };
+    btn.onmouseleave = function(){ this.style.background=opt[1]+'18'; };
+    btn.onclick = function(){
+      popup.remove();
+      if (opt[0]==='—  Remove') {
+        api('deleteAttRecord',{studentEmail:email,sessionDate:date}).then(function(){ loadTuition(classId); }).catch(function(){toast('Error','err');});
+      } else {
+        api('updateAttendance',{classId:classId,studentName:'',studentEmail:email,sessionDate:date,status:opt[0]})
+          .then(function(){ toast(opt[0]+' saved','ok'); loadTuition(classId); })
+          .catch(function(){toast('Error','err');});
+      }
+    };
+    popup.appendChild(btn);
+  });
+
+  // Position near the cell
+  var rect = cell.getBoundingClientRect();
+  popup.style.top  = Math.min(rect.bottom+4, window.innerHeight-160)+'px';
+  popup.style.left = Math.max(rect.left-30, 8)+'px';
+  document.body.appendChild(popup);
+  // Close on outside click
+  setTimeout(function(){
+    document.addEventListener('click', function handler(e){
+      if(!popup.contains(e.target)){popup.remove();document.removeEventListener('click',handler);}
+    });
+  }, 0);
+}
+
+function buildPaidCell(cell, classId, email, moNo, paid, paidDate) {
+  cell.innerHTML = '';
+  var wrap = document.createElement('div');
+  wrap.style = 'display:flex;align-items:center;gap:6px;justify-content:center;';
 
   var cb = document.createElement('input');
   cb.type = 'checkbox'; cb.checked = paid;
-  cb.style = 'width:13px;height:13px;cursor:pointer;accent-color:var(--red)';
-  cb.onchange = (function(cid,em,mo,lbl){ return function(){
-    togglePaidCell(cid,em,mo,this,lbl);
-  };})(classId, email, moNo, label);
+  cb.style = 'width:14px;height:14px;cursor:pointer;accent-color:var(--red);flex-shrink:0';
+  cb.onchange = (function(cid,em,mo){ return function(){
+    togglePaidCell(cid,em,mo,this);
+  };})(classId, email, moNo);
 
   var lbl = document.createElement('span');
-  lbl.style = 'font-size:10px;font-weight:700;color:'+(paid?'#16a34a':'#dc2626');
+  lbl.style = 'font-size:11px;font-weight:700;color:'+(paid?'#16a34a':'#dc2626');
   lbl.textContent = paid ? 'Paid' : 'Unpaid';
 
-  label.appendChild(cb); label.appendChild(lbl);
-  wrap.appendChild(label);
+  wrap.appendChild(cb);
+  wrap.appendChild(lbl);
 
+  // Date input inline to the right of "Paid"
   if (paid && paidDate) {
     var dateInput = document.createElement('input');
     dateInput.type = 'date'; dateInput.value = paidDate;
-    dateInput.style = 'font-size:9px;border:none;border-bottom:1px solid #86efac;background:transparent;color:#166534;cursor:pointer;width:70px;text-align:center';
+    dateInput.style = 'font-size:10px;border:1px solid #86efac;border-radius:4px;padding:1px 4px;background:#f0fdf4;color:#166534;cursor:pointer;width:88px;';
     dateInput.onchange = (function(cid,em,mo){ return function(){
       updatePaidDate(cid,em,mo,this);
     };})(classId, email, moNo);
     wrap.appendChild(dateInput);
   }
-  cell.innerHTML = '';
+
   cell.appendChild(wrap);
 }
 
@@ -1087,16 +1142,32 @@ async function checkAttRecords(){
 }
 async function quickDeleteAtt(email,date){
   if(!confirm('Delete record for '+email+' on '+date+'?')) return;
-  try{var r=await api('deleteAttRecord',{studentEmail:email,sessionDate:date});if(r.success){toast('Deleted '+r.deleted+' record(s)','ok');checkAttRecords();}else toast('Error: '+r.message,'err');}
-  catch(e){toast('Connection error','err');}
+  try{
+    var r=await api('deleteAttRecord',{studentEmail:email,sessionDate:date});
+    if(r.success){
+      toast('Deleted '+r.deleted+' record(s) ✓','ok');
+      checkAttRecords();
+      // Refresh overview data so counts update immediately
+      classData=[]; allSchedules={}; tuitionCache={};
+      await init();
+    } else toast('Error: '+r.message,'err');
+  } catch(e){toast('Connection error','err');}
 }
 async function doDeleteAttRecord(){
   var email=document.getElementById('resetEmail').value.trim();
   var date=document.getElementById('resetDate').value;
   if(!email||!date){toast('Enter email and date','err');return;}
   if(!confirm('Delete ALL records for '+email+' on '+date+'?')) return;
-  try{var r=await api('deleteAttRecord',{studentEmail:email,sessionDate:date});if(r.success){toast('Deleted '+r.deleted+' record(s)','ok');checkAttRecords();}else toast('Error: '+r.message,'err');}
-  catch(e){toast('Connection error','err');}
+  try{
+    var r=await api('deleteAttRecord',{studentEmail:email,sessionDate:date});
+    if(r.success){
+      toast('Deleted '+r.deleted+' record(s) ✓','ok');
+      checkAttRecords();
+      // Refresh overview data
+      classData=[]; allSchedules={}; tuitionCache={};
+      await init();
+    } else toast('Error: '+r.message,'err');
+  } catch(e){toast('Connection error','err');}
 }
 async function changePw(){
   var cur=document.getElementById('pwCur').value,nw=document.getElementById('pwNew').value,cf=document.getElementById('pwCf').value;
