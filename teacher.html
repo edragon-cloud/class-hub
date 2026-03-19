@@ -911,7 +911,7 @@ async function loadTuition(classId){
 
   el.innerHTML='<p style="padding:30px;text-align:center;color:var(--g400)">Loading…</p>';
   try {
-    // Fetch schedule and tuition data in parallel
+    // Fetch schedule, tuition, AND attendance detail in parallel
     var promises=[];
     if(!allSchedules[classId]) promises.push(api('getClassDetail',{classId:classId}));
     else promises.push(Promise.resolve(null));
@@ -921,7 +921,23 @@ async function loadTuition(classId){
     if(results[0]&&results[0].success) allSchedules[classId]=results[0].schedule||[];
     var r=results[1];
     if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
-    tuitionCache[classId]=r.students;
+
+    // Build per-student attendance map from resetAttendance (gives real date→status)
+    var students=r.students||[];
+    var attPromises=students.map(function(s){
+      return api('resetAttendance',{studentEmail:s.email,classId:classId})
+        .then(function(ar){
+          if(ar.success&&ar.records){
+            var map={};
+            ar.records.forEach(function(rec){ map[rec.date]={status:rec.status,score:rec.score||0}; });
+            s.sessDetail=map;
+          }
+          return s;
+        }).catch(function(){return s;});
+    });
+    await Promise.all(attPromises);
+
+    tuitionCache[classId]=students;
     tuitionCache[classId+'_totalMonths']=r.totalScheduledMonths||1;
     renderTuitionGrid(classId);
   } catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>';}
@@ -971,7 +987,6 @@ function renderTuitionGrid(classId){
   // GAS getTuitionForClass returns: total, monthsCompleted, sessInCycle, monthPayments
   // It does NOT return per-session attendance detail — we infer dot state from total count
   var rows=students.map(function(s){
-    var totalAttended = s.total || 0; // total non-Day0 sessions attended
     var cells='';
     for(var mo3=0;mo3<maxMonths;mo3++){
       for(var si2=0;si2<8;si2++){
@@ -983,14 +998,13 @@ function renderTuitionGrid(classId){
         // - If sessDate exists but not yet attended → grey ☑ (future/unrecorded), clickable
         // - No sessDate → no session scheduled
         var hasSession = !!sessDate;
-        var attended = gIdx2 < totalAttended;
         var dotClass, dotTitle;
-        if(attended){
-          var attDetail = s.sessDetail ? s.sessDetail[sessDate] : null;
-          var attStatus = attDetail ? attDetail.status : 'Present';
-          if(attStatus==='Late'){dotClass='adot adot-late';dotTitle='Late';}
-          else if(attStatus==='Absent'){dotClass='adot adot-absent';dotTitle='Absent';}
-          else{dotClass='adot adot-present';dotTitle='Present';}
+        if(hasSession && s.sessDetail && s.sessDetail[sessDate]){
+          // Real attendance record exists for this date
+          var attStatus = s.sessDetail[sessDate].status;
+          if(attStatus==='Late'){dotClass='adot adot-late';dotTitle='Late — '+sessDate;}
+          else if(attStatus==='Absent'){dotClass='adot adot-absent';dotTitle='Absent — '+sessDate;}
+          else{dotClass='adot adot-present';dotTitle='Present — '+sessDate;}
         } else if(hasSession){
           dotClass='adot adot-unset';dotTitle=sessDate+' — click to mark';
         } else {
@@ -1093,50 +1107,48 @@ function showAttPopup(cell,classId,email,date){
 }
 
 async function removeAllAtt(classId, sessionDate){
-  if(!confirm('Remove attendance for ALL students on '+sessionDate+'?\nThis deletes all records for this session.')) return;
   var cls=classData.find(function(c){return c.classId===classId;});
   var students=cls?cls.students:[];
-  if(!students.length){ toast('No students found for '+classId,'err'); return; }
+  if(!students.length){ toast('No students found','err'); return; }
 
-  toast('Checking records…','');
+  // Tìm date thực tế từ sessDetail (đã fetch khi load tuition)
+  // sessDetail được build từ records thực trong sheet → key là date thực
+  var cachedStudents = tuitionCache[classId]||[];
+  var realDate = sessionDate;
 
-  // Step 1: fetch actual records from first student to discover real date format in sheet
-  // GAS resetAttendance returns records with actual stored dates
-  var realDate = sessionDate; // fallback
-  try{
-    var probe = await api('resetAttendance',{studentEmail:students[0].email, classId:classId});
-    if(probe.success && probe.records && probe.records.length){
-      // Find a record whose date matches our sessionDate in any format
-      var found = probe.records.find(function(r){
-        return r.date === sessionDate ||
-               r.date === sessionDate.split('-').reverse().join('-') ||
-               r.date === sessionDate.replace(/-/g,'/');
-      });
-      if(found) realDate = found.date;
-      // Also log all dates so we can see what format GAS uses
-      console.log('[RemoveAll] GAS stored dates:', probe.records.map(function(r){return r.date;}).join(', '));
-      console.log('[RemoveAll] Looking for:', sessionDate, '| Using:', realDate);
-    }
-  }catch(e){ console.log('[RemoveAll] probe failed', e); }
+  for(var i=0;i<cachedStudents.length;i++){
+    var sd = cachedStudents[i].sessDetail;
+    if(!sd) continue;
+    var storedDates = Object.keys(sd);
+    if(!storedDates.length) continue;
+    // Exact match first
+    if(sd[sessionDate]){ realDate=sessionDate; break; }
+    // Find closest stored date within ±3 days of schedule date
+    var target = new Date(sessionDate).getTime();
+    var best = null, bestDiff = Infinity;
+    storedDates.forEach(function(d){
+      var diff = Math.abs(new Date(d).getTime() - target);
+      if(diff < bestDiff){ bestDiff=diff; best=d; }
+    });
+    if(best && bestDiff <= 3*86400000){ realDate=best; }
+    break;
+  }
 
-  toast('Removing '+students.length+' records for '+realDate+'…','');
-  var count=0, errors=0;
+  var confirmMsg = realDate!==sessionDate
+    ? 'Schedule: '+sessionDate+'\nActual stored date: '+realDate+'\n\nXóa toàn bộ điểm danh ngày '+realDate+'?'
+    : 'Xóa toàn bộ điểm danh ngày '+realDate+'?';
+  if(!confirm(confirmMsg)) return;
+
+  toast('Removing…','');
+  var count=0;
   for(var i=0;i<students.length;i++){
     try{
-      var r=await api('deleteAttRecord',{studentEmail:students[i].email, sessionDate:realDate});
-      console.log('[RemoveAll]', students[i].email, realDate, '→', JSON.stringify(r));
-      if(r.success){ if(r.deleted>0) count++; }
-      else errors++;
-    }catch(e){ errors++; }
+      var r=await api('deleteAttRecord',{studentEmail:students[i].email,sessionDate:realDate});
+      if(r.success&&r.deleted>0) count++;
+    }catch(e){}
   }
-
-  if(count>0){
-    toast('Removed '+count+' record(s) ✓','ok');
-  } else {
-    toast('Still 0 removed. Date used: '+realDate+' — check console (F12)','err');
-  }
-  delete tuitionCache[classId];
-  delete tuitionCache[classId+'_totalMonths'];
+  toast(count>0?'Removed '+count+' record(s) ✓':'No records found for '+realDate, count>0?'ok':'');
+  delete tuitionCache[classId]; delete tuitionCache[classId+'_totalMonths'];
   await loadTuition(classId, true);
 }
 
