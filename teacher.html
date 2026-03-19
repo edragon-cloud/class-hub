@@ -543,44 +543,112 @@ async function loadAccDetail(classId) {
 
     var studHtml = (!r.students||!r.students.length)
       ? '<p style="color:var(--g400)">No students.</p>'
-      : '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
-          '<thead><tr style="background:var(--g100)"><th style="padding:8px 11px;text-align:left">Student</th>'+
-          cols.map(function(s){return '<th style="padding:8px 11px;text-align:center;font-size:10px">'+(s.dayLabel||s.date)+'</th>';}).join('')+
-          '<th style="padding:8px 11px">Today Att.</th><th style="padding:8px 11px">Score</th></tr></thead><tbody>'+
-          r.students.map(function(s){
-            var dots = cols.map(function(cs){
-              var rec = s.currentCycle.find(function(r2){return r2.date===cs.date;});
-              if (!rec||!rec.status) return '<td style="text-align:center;padding:5px"><div style="width:26px;height:26px;background:var(--g100);border-radius:5px;margin:auto;display:flex;align-items:center;justify-content:center;color:var(--g400);font-size:10px">—</div></td>';
-              var bg=rec.status==='Absent'?'#fee2e2':rec.status==='Late'?'#fef9c3':'var(--red)';
-              var co=rec.status==='Absent'?'#991b1b':rec.status==='Late'?'#854d0e':'white';
-              var lbl=rec.score>0?rec.score:(rec.status==='Absent'?'A':rec.status==='Late'?'L':'✓');
-              return '<td style="text-align:center;padding:5px"><div style="width:26px;height:26px;background:'+bg+';border-radius:5px;margin:auto;display:flex;align-items:center;justify-content:center;color:'+co+';font-size:10px;font-weight:700">'+lbl+'</div></td>';
-            }).join('');
-            var tr = s.currentCycle.find(function(r2){return r2.date===today;});
-            var cs = tr?tr.status:'Present';
-            return '<tr><td style="padding:8px 11px;border-bottom:1px solid var(--g100)"><strong>'+s.name+'</strong></td>'+
-              dots+
-              '<td style="padding:5px 11px;border-bottom:1px solid var(--g100)">'+
-                '<select class="asel" data-cid="'+classId+'" data-name="'+s.name+'" data-date="'+today+'" onchange="markAtt(this)">'+
-                  '<option value="Present"'+(cs==='Present'?' selected':'')+'>✅ Present</option>'+
-                  '<option value="Late"'+(cs==='Late'?' selected':'')+'>🕐 Late</option>'+
-                  '<option value="Absent"'+(cs==='Absent'?' selected':'')+'>❌ Absent</option>'+
-                '</select></td>'+
-              '<td style="padding:5px 11px;border-bottom:1px solid var(--g100)">'+
-                '<input type="number" class="sinp score-field" min="0" max="10" value="'+(tr&&tr.score?tr.score:'')+'" placeholder="0-10" data-cid="'+classId+'" data-name="'+s.name+'" data-date="'+today+'"/>'+
-              '</td></tr>';
-          }).join('')+'</tbody></table></div>';
+      : '<div>'+
+          // Session selector
+          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">'+
+            '<label style="font-size:12px;font-weight:600;color:var(--g600)">Edit session:</label>'+
+            '<select id="sessDatePicker-'+key+'" style="padding:5px 10px;border:2px solid var(--g200);border-radius:7px;font-family:\'DM Sans\',sans-serif;font-size:12px;cursor:pointer;background:white;" onchange="reloadAttPanel(\''+classId+'\',this.value)">'+
+              [today].concat(cols.filter(function(c){return c.date&&c.date!==today;}).map(function(c){return c.date;}))
+                .map(function(d){return '<option value="'+d+'"'+(d===today?' selected':'')+'>'+d+(d===today?' (today)':'')+'</option>';}).join('')+
+            '</select>'+
+            '<span style="font-size:11px;color:var(--g400)">← select any past session to edit</span>'+
+          '</div>'+
+          '<div id="attTable-'+key+'" style="overflow-x:auto">'+
+          buildAttTable(r.students, cols, today, classId, key)+
+          '</div></div>';
+
+    function buildAttTable(students, cols, editDate, classId, key) {
+      return '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+        '<thead><tr style="background:var(--g100)"><th style="padding:8px 11px;text-align:left">Student</th>'+
+        cols.map(function(s){
+          var isEdit = s.date===editDate;
+          return '<th style="padding:8px 11px;text-align:center;font-size:10px;'+(isEdit?'background:#fff3cd;border-bottom:2px solid #f59e0b':'')+'">'+
+            (s.dayLabel||s.date)+
+          '</th>';
+        }).join('')+
+        '<th style="padding:8px 11px;background:#fff3cd;border-bottom:2px solid #f59e0b;white-space:nowrap">✏️ Att.</th>'+
+        '<th style="padding:8px 11px;background:#fff3cd;border-bottom:2px solid #f59e0b">Score</th></tr></thead><tbody>'+
+        students.map(function(s){
+          var dots = cols.map(function(cs){
+            var rec = s.currentCycle.find(function(r2){return r2.date===cs.date;});
+            if (!rec||!rec.status) return '<td style="text-align:center;padding:5px"><div style="width:26px;height:26px;background:var(--g100);border-radius:5px;margin:auto;display:flex;align-items:center;justify-content:center;color:var(--g400);font-size:10px">—</div></td>';
+            var bg=rec.status==='Absent'?'#fee2e2':rec.status==='Late'?'#fef9c3':'var(--red)';
+            var co=rec.status==='Absent'?'#991b1b':rec.status==='Late'?'#854d0e':'white';
+            var lbl=rec.score>0?rec.score:(rec.status==='Absent'?'A':rec.status==='Late'?'L':'✓');
+            return '<td style="text-align:center;padding:5px"><div style="width:26px;height:26px;background:'+bg+';border-radius:5px;margin:auto;display:flex;align-items:center;justify-content:center;color:'+co+';font-size:10px;font-weight:700">'+lbl+'</div></td>';
+          }).join('');
+          // Edit controls for selected date
+          var er = s.currentCycle.find(function(r2){return r2.date===editDate;});
+          var cs = er?er.status:'Present';
+          return '<tr><td style="padding:8px 11px;border-bottom:1px solid var(--g100)"><strong>'+s.name+'</strong></td>'+
+            dots+
+            '<td style="padding:5px 11px;border-bottom:1px solid var(--g100);background:#fffbeb;">'+
+              '<select class="asel" data-cid="'+classId+'" data-name="'+s.name+'" data-date="'+editDate+'" onchange="markAtt(this)">'+
+                '<option value="Present"'+(cs==='Present'?' selected':'')+'>✅ Present</option>'+
+                '<option value="Late"'+(cs==='Late'?' selected':'')+'>🕐 Late</option>'+
+                '<option value="Absent"'+(cs==='Absent'?' selected':'')+'>❌ Absent</option>'+
+              '</select></td>'+
+            '<td style="padding:5px 11px;border-bottom:1px solid var(--g100);background:#fffbeb;">'+
+              '<input type="number" class="sinp score-field" min="0" max="10" value="'+(er&&er.score?er.score:'')+'" placeholder="0-10" data-cid="'+classId+'" data-name="'+s.name+'" data-date="'+editDate+'"/>'+
+            '</td></tr>';
+        }).join('')+'</tbody></table>';
+    }
 
     el.innerHTML =
       '<div style="font-size:12px;font-weight:600;color:var(--g600);margin-bottom:8px;">📝 Homework</div>'+hwHtml+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px;">'+
-        '<div style="font-size:12px;font-weight:600;color:var(--g600);">👥 Attendance — Current Cycle</div>'+
+        '<div style="font-size:12px;font-weight:600;color:var(--g600);">👥 Attendance & Score</div>'+
         '<button class="btn btn-o" onclick="saveScores(\''+classId+'\')" style="font-size:11px;padding:5px 11px">💾 Save Scores</button>'+
       '</div>'+studHtml;
   } catch(e){ el.innerHTML='<span style="color:var(--red)">Connection error</span>'; }
 }
 
 function openAccFor(classId) { showSec('mgmt'); setTimeout(function(){ var key=classId.replace(/ /g,'_'); var b=document.getElementById('accb-'+key); if(b&&b.style.display!=='block') toggleAcc(classId); }, 200); }
+
+
+// Reload attendance edit panel when teacher selects a different session date
+async function reloadAttPanel(classId, editDate) {
+  var key = classId.replace(/ /g,'_');
+  var panel = document.getElementById('attTable-'+key);
+  if (!panel) return;
+  panel.innerHTML = '<p style="color:var(--g400);padding:10px">Loading…</p>';
+  try {
+    var r = await api('getClassDetail', {classId:classId});
+    if (!r.success) { panel.innerHTML='<p style="color:var(--red)">Error</p>'; return; }
+    var cols = r.currentCycleSess||[];
+    var html = '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+      '<thead><tr style="background:var(--g100)"><th style="padding:8px 11px;text-align:left">Student</th>'+
+      cols.map(function(s){
+        var isE=s.date===editDate;
+        return '<th style="padding:8px 11px;text-align:center;font-size:10px;'+(isE?'background:#fff3cd;border-bottom:2px solid #f59e0b':'')+'">'+(s.dayLabel||s.date)+'</th>';
+      }).join('')+
+      '<th style="padding:8px 11px;background:#fff3cd;border-bottom:2px solid #f59e0b;white-space:nowrap">&#9999;&#65039; Att.</th>'+
+      '<th style="padding:8px 11px;background:#fff3cd;border-bottom:2px solid #f59e0b">Score</th></tr></thead><tbody>'+
+      r.students.map(function(s){
+        var dots=cols.map(function(cs){
+          var rec=s.currentCycle.find(function(r2){return r2.date===cs.date;});
+          if(!rec||!rec.status)return '<td style="text-align:center;padding:5px"><div style="width:26px;height:26px;background:var(--g100);border-radius:5px;margin:auto;display:flex;align-items:center;justify-content:center;color:var(--g400);font-size:10px">--</div></td>';
+          var bg=rec.status==="Absent"?"#fee2e2":rec.status==="Late"?"#fef9c3":"var(--red)";
+          var co=rec.status==="Absent"?"#991b1b":rec.status==="Late"?"#854d0e":"white";
+          var lbl=rec.score>0?rec.score:(rec.status==="Absent"?"A":rec.status==="Late"?"L":"V");
+          return "<td style='text-align:center;padding:5px'><div style='width:26px;height:26px;background:"+bg+";border-radius:5px;margin:auto;display:flex;align-items:center;justify-content:center;color:"+co+";font-size:10px;font-weight:700'>"+lbl+"</div></td>";
+        }).join('');
+        var er=s.currentCycle.find(function(r2){return r2.date===editDate;});
+        var cs=er?er.status:'Present';
+        return '<tr><td style="padding:8px 11px;border-bottom:1px solid var(--g100)"><strong>'+s.name+'</strong></td>'+dots+
+          '<td style="padding:5px 11px;border-bottom:1px solid var(--g100);background:#fffbeb;">'+
+            '<select class="asel" data-cid="'+classId+'" data-name="'+s.name+'" data-date="'+editDate+'" onchange="markAtt(this)">'+
+              '<option value="Present"'+(cs==='Present'?' selected':'')+'>Present</option>'+
+              '<option value="Late"'+(cs==='Late'?' selected':'')+'>Late</option>'+
+              '<option value="Absent"'+(cs==='Absent'?' selected':'')+'>Absent</option>'+
+            '</select></td>'+
+          '<td style="padding:5px 11px;border-bottom:1px solid var(--g100);background:#fffbeb;">'+
+            '<input type="number" class="sinp score-field" min="0" max="10" value="'+(er&&er.score?er.score:'')+'" placeholder="0-10" data-cid="'+classId+'" data-name="'+s.name+'" data-date="'+editDate+'"/>'+
+          '</td></tr>';
+      }).join('')+'</tbody></table>';
+    panel.innerHTML = html;
+  } catch(e){ panel.innerHTML='<p style="color:var(--red)">Connection error</p>'; }
+}
 
 async function markAtt(sel) {
   var cid=sel.dataset.cid, name=sel.dataset.name, date=sel.dataset.date, status=sel.value;
@@ -761,6 +829,15 @@ async function loadWeekly() {
 
 function changeWeek(dir){weekOffset=dir===0?0:weekOffset+dir;loadWeekly();}
 
+async function deleteHW(sessionDate, type, classId) {
+  if (!confirm('Delete "'+type+'" homework for '+sessionDate+'? This cannot be undone.')) return;
+  try {
+    var r = await api('deleteHomework', {classId:classId, sessionDate:sessionDate, type:type});
+    if (r.success) { toast('Homework deleted ✓','ok'); await loadHWTracker(classId); }
+    else toast('Error: '+r.message,'err');
+  } catch(e){ toast('Connection error','err'); }
+}
+
 // ═══════════════════════════════════════════════════════
 // ④ TUITION TRACKER
 // ═══════════════════════════════════════════════════════
@@ -868,16 +945,28 @@ function renderTuitionGrid(classId) {
     for (var mo=0; mo<maxMonths; mo++) {
       var moNo = String(mo+1);
       var sessInThisMonth = mo < s.monthsCompleted ? 8 : (mo===s.monthsCompleted ? s.sessInCycle : 0);
-      // 8 clickable session dots
+      // 8 clickable session dots - show actual attendance status
       for (var si=0; si<8; si++) {
         var globalIdx = mo*8 + si;
         var sessDate = schedDates[globalIdx] || '';
         var dotId = 'dot-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+globalIdx;
-        var hasSess = si < sessInThisMonth;
+        var attDetail = sessDate && s.sessDetail ? s.sessDetail[sessDate] : null;
+        var attStatus = attDetail ? attDetail.status : null;
+        var dotBg, dotIcon, dotTitle;
+        if (attStatus==='Present') {
+          dotBg='#16a34a'; dotIcon='&#10003;'; dotTitle='Present — click to change';
+        } else if (attStatus==='Late') {
+          dotBg='#d97706'; dotIcon='&#9200;'; dotTitle='Late — click to change';
+        } else if (attStatus==='Absent') {
+          dotBg='#dc2626'; dotIcon='&#10005;'; dotTitle='Absent — click to change';
+        } else if (sessDate) {
+          dotBg='var(--g100)'; dotIcon=''; dotTitle=sessDate+' — click to mark attendance';
+        } else {
+          dotBg='var(--g200)'; dotIcon=''; dotTitle='No session scheduled';
+        }
+        var hasDate = !!sessDate;
         cells += '<td style="padding:2px 1px;text-align:center" id="'+dotId+'">'+
-          (hasSess
-            ? '<div style="width:28px;height:28px;background:#16a34a;border-radius:5px;margin:auto;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;cursor:pointer" title="Click to change">&#10003;</div>'
-            : '<div style="width:28px;height:28px;background:var(--g100);border-radius:5px;margin:auto;border:1px dashed var(--g200);cursor:pointer" title="'+sessDate+'"></div>')+
+          '<div style="width:28px;height:28px;background:'+dotBg+';border-radius:5px;margin:auto;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;'+(hasDate?'cursor:pointer':'')+';" title="'+dotTitle+'">'+dotIcon+'</div>'+
         '</td>';
       }
       // Paid cell placeholder
@@ -1152,12 +1241,31 @@ function renderHWTracker(classId) {
   };
 
   // Build header columns for each HW
+  // Parse skill from content: "Speaking: [topic]" → skill="Speaking", topic="[topic]"
+  function parseHWTitle(hw) {
+    var content = hw.content || '';
+    var colonIdx = content.indexOf(':');
+    if (colonIdx > 0) {
+      return {
+        skill: content.slice(0, colonIdx).trim(),
+        topic: content.slice(colonIdx+1).trim()
+      };
+    }
+    return { skill: typeNames[hw.type]||hw.type, topic: content };
+  }
+
   var hwHeaders = hwList.map(function(hw) {
     var col = typeColors[hw.type] || '#6b7280';
-    return '<th style="padding:8px 6px;text-align:center;min-width:80px;background:'+col+'18;border-bottom:2px solid '+col+';">'+
-      '<div style="font-size:9px;font-weight:700;color:'+col+'">'+( typeNames[hw.type]||hw.type)+'</div>'+
-      '<div style="font-size:10px;font-weight:600;color:var(--g900)">'+hw.dayLabel+'</div>'+
+    var parsed = parseHWTitle(hw);
+    return '<th style="padding:8px 6px;text-align:center;min-width:100px;background:'+col+'18;border-bottom:2px solid '+col+';position:relative;">'+
+      '<div style="font-size:10px;font-weight:700;color:'+col+'">'+parsed.skill+'</div>'+
+      '<div style="font-size:10px;font-weight:600;color:var(--g900);margin:2px 0">'+hw.dayLabel+'</div>'+
+      '<div style="font-size:9px;color:var(--g600);margin-bottom:2px;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+parsed.topic+'">'+parsed.topic+'</div>'+
       '<div style="font-size:9px;color:var(--g400)">Due: '+hw.deadline+'</div>'+
+      '<button data-date="'+hw.sessionDate+'" data-type="'+hw.type+'" data-cid="'+classId+'" '+
+        'onclick="deleteHW(this.dataset.date,this.dataset.type,this.dataset.cid)" '+
+        'style="position:absolute;top:3px;right:3px;background:none;border:none;color:#fca5a5;cursor:pointer;font-size:11px;padding:1px 4px;border-radius:3px;line-height:1;" '+
+        'title="Delete this homework">✕</button>'+
     '</th>';
   }).join('');
 
