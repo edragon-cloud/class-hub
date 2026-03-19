@@ -119,6 +119,7 @@ textarea.fc{resize:vertical;min-height:65px;}
     <button class="ni" onclick="showSec('tuition')"><span>💳</span>Tuition Tracker</button>
     <div class="nlbl">REPORTS</div>
     <button class="ni" onclick="showSec('homework_tracker')"><span>📋</span>Homework Tracker</button>
+    <button class="ni" onclick="showSec('archive')"><span>🗄</span>Archive</button>
     <button class="ni" onclick="showSec('diligence')"><span>🏆</span>Diligence Report</button>
     <button class="ni" onclick="showSec('export')"><span>📤</span>Monthly Export</button>
   </nav>
@@ -208,6 +209,12 @@ textarea.fc{resize:vertical;min-height:65px;}
       <div id="hwTrackerContent">
         <p style="padding:40px;text-align:center;color:var(--g400)">Select a class above to view homework submissions.</p>
       </div>
+    </div>
+
+    <!-- ARCHIVE -->
+    <div id="sec-archive" class="sec">
+      <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:18px;">🗄 Archived Students</div>
+      <div id="archiveContent"><p style="padding:40px;text-align:center;color:var(--g400)">Loading…</p></div>
     </div>
 
     <!-- ⑥ EXPORT -->
@@ -381,7 +388,8 @@ async function init() {
 // ═══════════════════════════════════════════════════════
 var secTitles = {overview:'Class Overview', mgmt:'Class Management', weekly:'Weekly Schedule',
   tuition:'Tuition Tracker', homework_tracker:'Homework Tracker',
-  diligence:'Diligence Report', export:'Monthly Export', settings:'Settings'};
+  diligence:'Diligence Report', export:'Monthly Export',
+  archive:'Archive', settings:'Settings'};
 
 function showSec(name) {
   document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('active');});
@@ -393,6 +401,7 @@ function showSec(name) {
   if (name==='weekly') loadWeekly();
   if (name==='mgmt')   buildMgmt();
   if (name==='homework_tracker') buildHWTrackerTabs();
+  if (name==='archive') loadArchive();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -832,14 +841,14 @@ function renderTuitionGrid(classId) {
     .map(function(s){ return s.date; });
 
   // Month header row (colspan 9 = 8 dots + 1 paid)
-  var monthHeaders = '<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:2;min-width:140px;max-width:200px;width:auto"></th>';
+  var monthHeaders = '<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;min-width:160px;max-width:200px;width:auto;box-shadow:2px 0 8px rgba(0,0,0,.15)"></th>';
   for (var mo=1; mo<=maxMonths; mo++) {
     var bg = mo%2===0 ? '#e8e6e2' : 'var(--g100)';
     monthHeaders += '<th colspan="9" style="padding:7px 4px;text-align:center;background:'+bg+';border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700;color:var(--g600)">Month '+mo+'</th>';
   }
 
   // Session sub-header row: date under session number
-  var sessHeaders = '<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:2;min-width:140px;max-width:200px;width:auto"></th>';
+  var sessHeaders = '<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;min-width:160px;max-width:200px;width:auto;box-shadow:2px 0 8px rgba(0,0,0,.15)"></th>';
   for (var mo=1; mo<=maxMonths; mo++) {
     var bg = mo%2===0 ? '#eae8e4' : '#f5f4f2';
     for (var si=1; si<=8; si++) {
@@ -873,13 +882,13 @@ function renderTuitionGrid(classId) {
       }
       // Paid cell placeholder
       var paidCellId = 'pc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+moNo;
-      var monthDone = mo < s.monthsCompleted || (mo===s.monthsCompleted && s.sessInCycle>0);
-      cells += '<td style="padding:3px 6px;border-right:2px solid var(--g200);border-left:1px solid var(--g200);background:#f0fdf4;min-width:90px" id="'+paidCellId+'">'+
-        (monthDone ? '' : '<span style="color:var(--g200);font-size:10px">—</span>')+
-      '</td>';
+      // Show paid cell for ALL scheduled months (so GV can pre-pay any month)
+      var hasStarted = mo < s.monthsCompleted || (mo===s.monthsCompleted && s.sessInCycle>0);
+      var isScheduled = mo < maxMonths; // always true in our loop
+      cells += '<td style="padding:3px 6px;border-right:2px solid var(--g200);border-left:1px solid var(--g200);background:#f0fdf4;min-width:110px" id="'+paidCellId+'"></td>';
     }
     return '<tr>'+
-      '<td style="padding:6px 12px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:160px;max-width:220px;width:auto;">'+
+      '<td style="padding:6px 12px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:5;min-width:160px;max-width:220px;width:auto;box-shadow:2px 0 6px rgba(0,0,0,.08);">'+
         '<div style="font-size:13px;font-weight:700;white-space:nowrap;">'+s.name+'</div>'+
         '<div style="font-size:10px;color:var(--g400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">'+s.email+'</div>'+
         '<div style="font-size:9px;color:var(--g400)">'+s.total+' sess</div>'+
@@ -914,8 +923,7 @@ function renderTuitionGrid(classId) {
         }
       }
       // Paid cells
-      var monthDone = mo < s.monthsCompleted || (mo===s.monthsCompleted && s.sessInCycle>0);
-      if (!monthDone) continue;
+      // Wire ALL scheduled months — teacher can pre-pay any month
       var cellId = 'pc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+moNo;
       var cell = document.getElementById(cellId);
       if (!cell) continue;
@@ -1341,9 +1349,116 @@ async function loadDiligence(classId){
 // ═══════════════════════════════════════════════════════
 // ARCHIVE
 // ═══════════════════════════════════════════════════════
-async function archiveStudentUI(email,name){
+// ═══════════════════════════════════════════════════════
+// ARCHIVE
+// ═══════════════════════════════════════════════════════
+async function loadArchive() {
+  var el = document.getElementById('archiveContent');
+  el.innerHTML = '<p style="padding:30px;text-align:center;color:var(--g400)">Loading archived students…</p>';
+  try {
+    var r = await api('getArchivedStudents');
+    if (!r.success) { el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>'; return; }
+    var students = r.students || [];
+    if (!students.length) {
+      el.innerHTML = '<div style="background:white;border-radius:13px;padding:40px;box-shadow:var(--sh);text-align:center;color:var(--g400)">'+
+        '<div style="font-size:32px;margin-bottom:10px">🗄</div>'+
+        '<div style="font-weight:600">No archived students yet</div>'+
+      '</div>';
+      return;
+    }
+    el.innerHTML = '<div class="card">'+
+      '<div class="ch"><div class="ct">Archived Students</div><span style="font-size:12px;color:var(--g400)">'+students.length+' student(s)</span></div>'+
+      '<div class="tw"><table>'+
+        '<thead><tr>'+
+          '<th>#</th><th>ID</th><th>Name</th><th>Class</th><th>Email</th>'+
+          '<th>Total Sessions</th><th>Months Completed</th><th>Archived On</th><th></th>'+
+        '</tr></thead>'+
+        '<tbody>'+students.map(function(s,i){
+          return '<tr>'+
+            '<td style="color:var(--g400)">'+(i+1)+'</td>'+
+            '<td><span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700;font-family:monospace">'+(s.studentId||'—')+'</span></td>'+
+            '<td><strong>'+s.name+'</strong></td>'+
+            '<td><span style="background:var(--g100);padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600">'+s.class+'</span></td>'+
+            '<td style="font-size:12px;color:var(--g400)">'+s.email+'</td>'+
+            '<td style="text-align:center;font-weight:600">'+s.totalSessions+'</td>'+
+            '<td style="text-align:center;font-weight:600">'+s.monthsCompleted+'</td>'+
+            '<td style="font-size:12px;color:var(--g400)">'+s.archivedDate+'</td>'+
+            '<td>'+
+              '<button class="btn btn-o" style="font-size:11px;padding:4px 10px" onclick="viewArchivedStudent(\''+s.email+'\',\''+s.name+'\')">View</button>'+
+              ' <button class="btn btn-g" style="font-size:11px;padding:4px 10px;color:#16a34a;border-color:#86efac" onclick="unarchiveStudentUI(\''+s.email+'\',\''+s.name+'\')">Restore</button>'+
+            '</td>'+
+          '</tr>';
+        }).join('')+
+        '</tbody></table></div></div>';
+  } catch(e){ el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>'; }
+}
+
+async function viewArchivedStudent(email, name) {
+  try {
+    var r = await api('getArchivedStudentDetail', {email:email});
+    if (!r.success) { toast('Error: '+r.message,'err'); return; }
+    var s = r.student;
+    // Build detail modal inline
+    var existing = document.getElementById('archiveDetailPanel');
+    if (existing) existing.remove();
+    var panel = document.createElement('div');
+    panel.id = 'archiveDetailPanel';
+    panel.style = 'position:fixed;inset:0;z-index:200;background:rgba(26,25,22,.7);display:flex;align-items:center;justify-content:center;padding:16px;';
+    var inner = document.createElement('div');
+    inner.style = 'background:white;border-radius:14px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;';
+
+    var tuitionRows = Object.keys(s.monthPayments||{}).map(function(mo){
+      var p = s.monthPayments[mo];
+      return '<tr><td style="padding:8px 14px">Tháng '+mo+'</td>'+
+        '<td style="padding:8px 14px"><span class="badge bp">✓ Paid</span></td>'+
+        '<td style="padding:8px 14px;font-size:12px;color:var(--g400)">'+p.date+'</td>'+
+        '<td style="padding:8px 14px;font-size:12px;color:var(--g400)">'+p.note+'</td></tr>';
+    }).join('') || '<tr><td colspan="4" style="padding:14px;color:var(--g400);text-align:center">No payments recorded</td></tr>';
+
+    inner.innerHTML = '<div style="padding:20px 24px;border-bottom:1px solid var(--g100);display:flex;justify-content:space-between;align-items:center">'+
+      '<div><div style="font-family:\'Playfair Display\',serif;font-size:18px;font-weight:700">'+name+'</div>'+
+      '<div style="font-size:12px;color:var(--g400);margin-top:2px">'+email+' · '+(s.class||'')+'</div></div>'+
+      '<button onclick="document.getElementById(\'archiveDetailPanel\').remove()" style="width:30px;height:30px;border:none;background:var(--g100);border-radius:50%;cursor:pointer;font-size:16px">×</button>'+
+    '</div>'+
+    '<div style="padding:20px 24px">'+
+      '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;">'+
+        '<div style="background:var(--g100);border-radius:9px;padding:14px 18px;flex:1;min-width:100px;text-align:center">'+
+          '<div style="font-size:22px;font-weight:700;font-family:\'Playfair Display\',serif">'+s.totalSessions+'</div>'+
+          '<div style="font-size:11px;color:var(--g400)">Total Sessions</div></div>'+
+        '<div style="background:var(--g100);border-radius:9px;padding:14px 18px;flex:1;min-width:100px;text-align:center">'+
+          '<div style="font-size:22px;font-weight:700;font-family:\'Playfair Display\',serif">'+s.monthsCompleted+'</div>'+
+          '<div style="font-size:11px;color:var(--g400)">Months Completed</div></div>'+
+        '<div style="background:var(--g100);border-radius:9px;padding:14px 18px;flex:1;min-width:100px;text-align:center">'+
+          '<div style="font-size:22px;font-weight:700;font-family:\'Playfair Display\',serif">'+s.present+'</div>'+
+          '<div style="font-size:11px;color:var(--g400)">Present</div></div>'+
+        '<div style="background:#fee2e2;border-radius:9px;padding:14px 18px;flex:1;min-width:100px;text-align:center">'+
+          '<div style="font-size:22px;font-weight:700;font-family:\'Playfair Display\',serif;color:#dc2626">'+s.absent+'</div>'+
+          '<div style="font-size:11px;color:#dc2626">Absent</div></div>'+
+      '</div>'+
+      '<div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--g600)">💳 Tuition History</div>'+
+      '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px">'+
+        '<thead><tr style="background:var(--g100)"><th style="padding:8px 14px;text-align:left">Month</th><th style="padding:8px 14px;text-align:left">Status</th><th style="padding:8px 14px;text-align:left">Date</th><th style="padding:8px 14px;text-align:left">Note</th></tr></thead>'+
+        '<tbody>'+tuitionRows+'</tbody>'+
+      '</table>'+
+    '</div>';
+    panel.appendChild(inner);
+    panel.onclick = function(e){ if(e.target===panel) panel.remove(); };
+    document.body.appendChild(panel);
+  } catch(e){ toast('Connection error','err'); }
+}
+
+async function unarchiveStudentUI(email, name) {
+  if (!confirm('Restore "'+name+'" back to active students?')) return;
+  try {
+    var r = await api('archiveStudent',{email:email,archive:false});
+    if (r.success) { toast(name+' restored ✓','ok'); loadArchive(); await init(); }
+    else toast('Error: '+r.message,'err');
+  } catch(e){ toast('Connection error','err'); }
+}
+
+async function archiveStudentUI(email, name) {
   if(!confirm('Archive student "'+name+'"? They will be moved to the Archived tab in your sheet.')) return;
-  try{var r=await api('archiveStudent',{email:email,archive:true});if(r.success){toast('Student archived','ok');await doRefresh();}else toast('Error: '+r.message,'err');}
+  try{var r=await api('archiveStudent',{email:email,archive:true});if(r.success){toast('Student archived ✓','ok');await doRefresh();loadArchive();}else toast('Error: '+r.message,'err');}
   catch(e){toast('Connection error','err');}
 }
 
