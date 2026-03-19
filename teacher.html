@@ -167,13 +167,18 @@ textarea.fc{resize:vertical;min-height:60px;}
 .acc-h{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:background .15s;}
 .acc-h:hover{background:var(--off);}
 .acc-b{display:none;border-top:1px solid var(--g100);}
-/* ═══════════════════════════════════════ ATT DOTS */
+/* ═══════════════════════════════════════ ATT DOTS → clean squares */
 .adot{
-  width:30px;height:30px;border-radius:6px;margin:auto;
-  display:flex;align-items:center;justify-content:center;
-  font-size:13px;font-weight:700;cursor:pointer;transition:transform .1s;
+  width:28px;height:28px;border-radius:5px;margin:auto;
+  cursor:pointer;transition:transform .1s, box-shadow .1s;
+  border:none;display:block;
 }
-.adot:hover{transform:scale(1.15);}
+.adot:hover{transform:scale(1.18);box-shadow:0 2px 8px rgba(0,0,0,.18);}
+.adot-empty{background:#e2e0dc;}          /* grey — no session */
+.adot-unset{background:#d1d0cc;cursor:pointer;}  /* grey — scheduled but not recorded */
+.adot-present{background:#16a34a;}         /* green */
+.adot-late{background:#d97706;}            /* amber */
+.adot-absent{background:#dc2626;}          /* red */
 /* ═══════════════════════════════════════ SECTION HEADER */
 .sec-hd{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;}
 .sec-title{font-family:var(--serif);font-size:18px;font-weight:700;}
@@ -976,23 +981,20 @@ function renderTuitionGrid(classId){
         // - No sessDate → no session scheduled
         var hasSession = !!sessDate;
         var attended = gIdx2 < totalAttended;
-        var dotBg, dotIcon, dotColor;
+        var dotClass, dotTitle;
         if(attended){
-          // Default to Present (green); actual per-session status needs att detail
-          // Use sessDetail if available (loaded via getClassDetail), else assume Present
           var attDetail = s.sessDetail ? s.sessDetail[sessDate] : null;
           var attStatus = attDetail ? attDetail.status : 'Present';
-          if(attStatus==='Late'){dotBg='#d97706';dotIcon='⏲';dotColor='white';}
-          else if(attStatus==='Absent'){dotBg='#dc2626';dotIcon='✗';dotColor='white';}
-          else{dotBg='#16a34a';dotIcon='☑';dotColor='white';}
+          if(attStatus==='Late'){dotClass='adot adot-late';dotTitle='Late';}
+          else if(attStatus==='Absent'){dotClass='adot adot-absent';dotTitle='Absent';}
+          else{dotClass='adot adot-present';dotTitle='Present';}
         } else if(hasSession){
-          dotBg='var(--g200)';dotIcon='☑';dotColor='var(--g400)';
+          dotClass='adot adot-unset';dotTitle=sessDate+' — click to mark';
         } else {
-          dotBg='var(--g100)';dotIcon='';dotColor='var(--g300)';
+          dotClass='adot adot-empty';dotTitle='';
         }
-        var title=sessDate?sessDate+(attended?' (attended)':' (not yet)'):'-';
-        cells+='<td style="padding:2px 1px;text-align:center" id="'+dotId+'">'+
-          '<div class="adot" style="background:'+dotBg+';color:'+dotColor+';'+(hasSession?'cursor:pointer':'')+'" title="'+title+'">'+dotIcon+'</div></td>';
+        cells+='<td style="padding:3px 2px;text-align:center" id="'+dotId+'">'+
+          '<div class="'+dotClass+'" title="'+dotTitle+'"'+(hasSession?'':' style="cursor:default"')+'></div></td>';
       }
       var paidCellId='pc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+(mo3+1);
       cells+='<td style="padding:3px 6px;border-right:2px solid var(--g200);border-left:1px solid var(--g200);background:#f0fdf4;min-width:100px" id="'+paidCellId+'"></td>';
@@ -1040,7 +1042,7 @@ function showAttPopup(cell,classId,email,date){
   title.style='font-size:11px;font-weight:700;color:var(--g600);margin-bottom:5px;border-bottom:1px solid var(--g100);padding-bottom:6px;';
   var dp=date.split('-'); title.textContent=dp[2]+'/'+dp[1]+'/'+dp[0];
   popup.appendChild(title);
-  [['Present','#16a34a','☑'],['Late','#d97706','⏲'],['Absent','#dc2626','✗'],['Remove','#9d9b96','✕']].forEach(function(opt){
+  [['Present','#16a34a','🟩'],['Late','#d97706','🟨'],['Absent','#dc2626','🟥'],['Remove','#9d9b96','✕']].forEach(function(opt){
     var btn=document.createElement('button');
     btn.style='padding:6px 10px;border:none;border-radius:6px;background:'+opt[1]+'18;color:'+opt[1]+';font-size:12px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:7px;width:100%;';
     btn.innerHTML='<span>'+opt[2]+'</span><span>'+opt[0]+'</span>';
@@ -1050,13 +1052,30 @@ function showAttPopup(cell,classId,email,date){
       popup.remove();
       if(action==='Remove'){
         api('deleteAttRecord',{studentEmail:email,sessionDate:date})
-          .then(function(r){r.success?(toast('Removed ✓','ok'),loadTuition(classId)):toast('Error: '+r.message,'err')})
-          .catch(function(){toast('Connection error','err');});
+          .then(function(r){
+            if(r.success){
+              toast('Removed ✓','ok');
+              // Update dot immediately without full reload
+              var dotDiv=cell.querySelector('.adot');
+              if(dotDiv){dotDiv.className='adot adot-unset';dotDiv.title=date+' — click to mark';}
+              delete tuitionCache[classId]; delete tuitionCache[classId+'_totalMonths'];
+              loadTuition(classId);
+            } else toast('Error: '+r.message,'err');
+          }).catch(function(){toast('Connection error','err');});
       } else {
         var sessInfo=(allSchedules[classId]||[]).find(function(s){return s.date===date;});
         api('updateAttendance',{classId:classId,studentEmail:email,sessionDate:date,status:action,dayLabel:sessInfo?sessInfo.dayLabel:''})
-          .then(function(r){toast(action+' saved ✓','ok');loadTuition(classId);})
-          .catch(function(){toast('Connection error','err');});
+          .then(function(r){
+            toast(action+' saved ✓','ok');
+            // Update dot immediately
+            var dotDiv=cell.querySelector('.adot');
+            if(dotDiv){
+              var nc=action==='Present'?'adot-present':action==='Late'?'adot-late':'adot-absent';
+              dotDiv.className='adot '+nc; dotDiv.title=action;
+            }
+            delete tuitionCache[classId]; delete tuitionCache[classId+'_totalMonths'];
+            loadTuition(classId);
+          }).catch(function(){toast('Connection error','err');});
       }
     };})(opt[0]);
     popup.appendChild(btn);
@@ -1074,8 +1093,11 @@ function showAttPopup(cell,classId,email,date){
 
 async function removeAllAtt(classId, sessionDate){
   if(!confirm('Remove attendance for ALL students on '+sessionDate+'?\nThis deletes all records for this session.')) return;
-  var students=tuitionCache[classId]||[];
-  if(!students.length){ toast('No student data','err'); return; }
+  // Get students from classData (more reliable than tuitionCache)
+  var cls=classData.find(function(c){return c.classId===classId;});
+  var students=cls?cls.students:[];
+  if(!students.length){ toast('No students found for '+classId,'err'); return; }
+  toast('Removing '+students.length+' records…','');
   var count=0;
   for(var i=0;i<students.length;i++){
     try{
@@ -1083,7 +1105,8 @@ async function removeAllAtt(classId, sessionDate){
       if(r.success&&r.deleted>0) count++;
     }catch(e){}
   }
-  toast('Removed '+count+' record(s) ✓','ok');
+  toast('Removed '+count+'/'+students.length+' record(s) ✓','ok');
+  // Clear cache so next render fetches fresh data
   delete tuitionCache[classId];
   delete tuitionCache[classId+'_totalMonths'];
   await loadTuition(classId);
