@@ -147,8 +147,8 @@ textarea.fc{resize:vertical;min-height:65px;}
       <div class="card">
         <div class="ch"><div class="ct" id="ovTitle">All Students</div><span style="font-size:12px;color:var(--g400)" id="ovCount"></span></div>
         <div class="tw"><table>
-          <thead><tr><th>#</th><th>Student</th><th>Class</th><th>Tuition (months)</th><th>This month</th><th>Present</th><th>Late</th><th>Absent</th><th></th></tr></thead>
-          <tbody id="ovBody"><tr><td colspan="9" style="text-align:center;padding:40px;color:var(--g400)">Loading…</td></tr></tbody>
+          <thead><tr><th>#</th><th>ID</th><th>Student</th><th>Class</th><th>Tuition (months)</th><th>This month</th><th>Present</th><th>Late</th><th>Absent</th><th></th></tr></thead>
+          <tbody id="ovBody"><tr><td colspan="10" style="text-align:center;padding:40px;color:var(--g400)">Loading…</td></tr></tbody>
         </table></div>
       </div>
     </div>
@@ -219,6 +219,16 @@ textarea.fc{resize:vertical;min-height:65px;}
     <!-- ⑦ SETTINGS -->
     <div id="sec-settings" class="sec">
       <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:18px;">Settings</div>
+      <!-- Student ID Management -->
+      <div style="background:white;border-radius:13px;padding:26px;box-shadow:var(--sh);max-width:520px;margin-bottom:18px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px;">🪪 Student ID Assignment</div>
+        <p style="font-size:13px;color:var(--g400);margin-bottom:14px;">Auto-generate IDs for all existing students who don't have one yet. Format: <code style="background:var(--g100);padding:2px 6px;border-radius:4px;font-size:12px">IE42-001</code></p>
+        <div style="background:var(--g100);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--g600);">
+          <strong>Prefix rules:</strong> IELTS → IE · General English → GE · Teen → TE · Kids → KI · Mầm non → KG
+        </div>
+        <div id="assignIdResult" style="display:none;padding:9px 13px;border-radius:7px;font-size:13px;margin-bottom:12px;"></div>
+        <button class="btn btn-r" onclick="assignAllIds()" style="font-size:13px;">🪪 Assign IDs to All Students</button>
+      </div>
       <div style="background:white;border-radius:13px;padding:26px;box-shadow:var(--sh);max-width:520px;margin-bottom:18px;">
         <div style="font-size:14px;font-weight:600;margin-bottom:6px;">&#128295; Fix Duplicate Attendance</div>
         <p style="font-size:13px;color:var(--g400);margin-bottom:14px;">Delete duplicate session records caused by accidental double-tap of End Session.</p>
@@ -400,10 +410,15 @@ function renderOverview(classId) {
   var all = filtered.reduce(function(acc,c){return acc.concat(c.students);}, []);
   document.getElementById('ovTitle').textContent = classId==='all' ? 'All Students' : 'Class '+classId;
   document.getElementById('ovCount').textContent = all.length + ' student(s)';
-  if (!all.length) { document.getElementById('ovBody').innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--g400)">No students found</td></tr>'; return; }
+  if (!all.length) { document.getElementById('ovBody').innerHTML='<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--g400)">No students found</td></tr>'; return; }
   document.getElementById('ovBody').innerHTML = all.map(function(s,i){
     var sin = s.total%8 || (s.total>0?8:0);
-    return '<tr><td style="color:var(--g400)">'+(i+1)+'</td><td><strong>'+s.name+'</strong></td>'+
+    var idBadge = s.studentId
+      ? '<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700;font-family:monospace;letter-spacing:.3px">'+s.studentId+'</span>'
+      : '<span style="color:var(--g400);font-size:11px">—</span>';
+    return '<tr><td style="color:var(--g400)">'+(i+1)+'</td>'+
+      '<td>'+idBadge+'</td>'+
+      '<td><strong>'+s.name+'</strong></td>'+
       '<td><span style="background:var(--g100);padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600">'+s.class+'</span></td>'+
       '<td><strong>'+s.monthsUsed+'</strong> <span style="color:var(--g400);font-size:11px">mo · '+s.total+' sess</span></td>'+
       '<td>'+sin+'/8</td>'+
@@ -800,14 +815,14 @@ function renderTuitionGrid(classId) {
     .map(function(s){ return s.date; });
 
   // Month header row (colspan 9 = 8 dots + 1 paid)
-  var monthHeaders = '<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:2;min-width:110px;max-width:110px;width:110px"></th>';
+  var monthHeaders = '<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:2;min-width:140px;max-width:200px;width:auto"></th>';
   for (var mo=1; mo<=maxMonths; mo++) {
     var bg = mo%2===0 ? '#e8e6e2' : 'var(--g100)';
     monthHeaders += '<th colspan="9" style="padding:7px 4px;text-align:center;background:'+bg+';border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700;color:var(--g600)">Month '+mo+'</th>';
   }
 
   // Session sub-header row: date under session number
-  var sessHeaders = '<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:2;"></th>';
+  var sessHeaders = '<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:2;min-width:140px;max-width:200px;width:auto"></th>';
   for (var mo=1; mo<=maxMonths; mo++) {
     var bg = mo%2===0 ? '#eae8e4' : '#f5f4f2';
     for (var si=1; si<=8; si++) {
@@ -847,8 +862,8 @@ function renderTuitionGrid(classId) {
       '</td>';
     }
     return '<tr>'+
-      '<td style="padding:6px 10px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:110px;max-width:110px;width:110px;overflow:hidden;">'+
-        '<div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+s.name+'</div>'+
+      '<td style="padding:6px 12px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:140px;max-width:200px;width:auto;">'+
+        '<div style="font-size:13px;font-weight:700;white-space:nowrap;">'+s.name+'</div>'+
         '<div style="font-size:9px;color:var(--g400)">'+s.total+' sess</div>'+
       '</td>'+cells+'</tr>';
   }).join('');
@@ -894,49 +909,68 @@ function renderTuitionGrid(classId) {
 
 // Show mini popup to set attendance status on a session dot
 function showAttPopup(cell, classId, email, date, currentlyAttended) {
-  // Remove any existing popup
   var existing = document.getElementById('attPopup');
   if (existing) existing.remove();
 
   var popup = document.createElement('div');
   popup.id = 'attPopup';
-  popup.style = 'position:fixed;z-index:999;background:white;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.2);padding:12px;display:flex;flex-direction:column;gap:6px;min-width:140px;';
+  popup.style = 'position:fixed;z-index:9999;background:white;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.25);padding:12px;display:flex;flex-direction:column;gap:5px;min-width:150px;';
 
   var title = document.createElement('div');
-  title.style = 'font-size:11px;font-weight:700;color:var(--g600);margin-bottom:2px;border-bottom:1px solid var(--g100);padding-bottom:6px;';
-  title.textContent = date.split('-').slice(1).reverse().join('/'); // DD/MM/YYYY
+  title.style = 'font-size:11px;font-weight:700;color:var(--g600);margin-bottom:4px;border-bottom:1px solid var(--g100);padding-bottom:6px;';
+  // Format date nicely: DD/MM/YYYY
+  var dp = date.split('-');
+  title.textContent = (dp[2]+'/'+dp[1]+'/'+dp[0]) + ' — ' + (currentlyAttended ? 'Attended' : 'No record');
   popup.appendChild(title);
 
-  [['Present','#16a34a','✓'],['Late','#d97706','⏱'],['Absent','#dc2626','✗'],['—  Remove','#9d9b96','✕']].forEach(function(opt){
+  var options = [
+    ['Present', '#16a34a', '✓'],
+    ['Late',    '#d97706', '⏱'],
+    ['Absent',  '#dc2626', '✗'],
+    ['Remove',  '#9d9b96', '✕']
+  ];
+
+  options.forEach(function(opt) {
     var btn = document.createElement('button');
-    btn.style = 'padding:6px 10px;border:none;border-radius:6px;background:'+opt[1]+'18;color:'+opt[1]+';font-size:12px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px;';
-    btn.innerHTML = '<span style="font-size:14px">'+opt[2]+'</span> '+opt[0];
+    btn.style = 'padding:7px 11px;border:none;border-radius:6px;background:'+opt[1]+'18;color:'+opt[1]+';font-size:12px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:7px;width:100%;';
+    var icon = document.createElement('span');
+    icon.style = 'font-size:14px;'; icon.textContent = opt[2];
+    var lbl = document.createElement('span');
+    lbl.textContent = opt[0];
+    btn.appendChild(icon); btn.appendChild(lbl);
     btn.onmouseenter = function(){ this.style.background=opt[1]+'30'; };
     btn.onmouseleave = function(){ this.style.background=opt[1]+'18'; };
-    btn.onclick = function(){
+    btn.onclick = (function(action) { return function() {
       popup.remove();
-      if (opt[0]==='—  Remove') {
-        api('deleteAttRecord',{studentEmail:email,sessionDate:date}).then(function(){ loadTuition(classId); }).catch(function(){toast('Error','err');});
+      if (action === 'Remove') {
+        api('deleteAttRecord', {studentEmail:email, sessionDate:date})
+          .then(function(r) {
+            if (r.success) { toast('Record removed ✓', 'ok'); loadTuition(classId); }
+            else toast('Error: '+r.message, 'err');
+          }).catch(function(){ toast('Connection error','err'); });
       } else {
-        api('updateAttendance',{classId:classId,studentName:'',studentEmail:email,sessionDate:date,status:opt[0]})
-          .then(function(){ toast(opt[0]+' saved','ok'); loadTuition(classId); })
-          .catch(function(){toast('Error','err');});
+        // Find dayLabel from schedule
+        var sessDate = (allSchedules[classId]||[]).find(function(s){ return s.date===date; });
+        var dayLabel = sessDate ? sessDate.dayLabel : '';
+        api('updateAttendance', {classId:classId, studentEmail:email, sessionDate:date, status:action, dayLabel:dayLabel})
+          .then(function(r) {
+            if (r.success || r.success===undefined) { toast(action+' saved ✓','ok'); loadTuition(classId); }
+            else toast('Error: '+(r.message||'unknown'), 'err');
+          }).catch(function(){ toast('Connection error','err'); });
       }
-    };
+    };})(opt[0]);
     popup.appendChild(btn);
   });
 
-  // Position near the cell
   var rect = cell.getBoundingClientRect();
-  popup.style.top  = Math.min(rect.bottom+4, window.innerHeight-160)+'px';
-  popup.style.left = Math.max(rect.left-30, 8)+'px';
+  popup.style.top  = Math.min(rect.bottom+6, window.innerHeight-180)+'px';
+  popup.style.left = Math.max(rect.left-20, 8)+'px';
   document.body.appendChild(popup);
-  // Close on outside click
   setTimeout(function(){
     document.addEventListener('click', function handler(e){
-      if(!popup.contains(e.target)){popup.remove();document.removeEventListener('click',handler);}
+      if (!popup.contains(e.target)) { popup.remove(); document.removeEventListener('click',handler); }
     });
-  }, 0);
+  }, 10);
 }
 
 function buildPaidCell(cell, classId, email, moNo, paid, paidDate) {
@@ -1169,6 +1203,25 @@ async function doDeleteAttRecord(){
     } else toast('Error: '+r.message,'err');
   } catch(e){toast('Connection error','err');}
 }
+async function assignAllIds() {
+  var btn = event.target; btn.disabled=true; btn.textContent='Assigning…';
+  var res = document.getElementById('assignIdResult');
+  try {
+    var r = await api('assignAllStudentIds');
+    if (r.success) {
+      res.textContent = '✓ Assigned IDs to '+r.assigned+' student(s). Refreshing data…';
+      res.style.cssText='display:block;padding:9px 13px;border-radius:7px;background:#dcfce7;color:#166534;border:1px solid #86efac;font-size:13px;margin-bottom:12px;';
+      classData=[]; await init();
+    } else {
+      res.textContent = 'Error: '+(r.message||'Unknown');
+      res.style.cssText='display:block;padding:9px 13px;border-radius:7px;background:#fee2e2;color:#991b1b;font-size:13px;margin-bottom:12px;';
+    }
+  } catch(e) {
+    res.textContent='Connection error'; res.style.cssText='display:block;padding:9px 13px;border-radius:7px;background:#fee2e2;color:#991b1b;font-size:13px;margin-bottom:12px;';
+  }
+  btn.disabled=false; btn.textContent='🪪 Assign IDs to All Students';
+}
+
 async function changePw(){
   var cur=document.getElementById('pwCur').value,nw=document.getElementById('pwNew').value,cf=document.getElementById('pwCf').value;
   var al=document.getElementById('pwAlert');

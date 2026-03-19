@@ -120,6 +120,7 @@ table.pt tr:last-child td{border-bottom:none;}
     <div class="user-av" id="uAvatar">?</div>
     <div class="user-name" id="uName">Loading…</div>
     <div class="user-class" id="uClass">—</div>
+    <div id="uStudentId" style="display:none;background:rgba(255,255,255,.12);color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;margin-top:4px;font-family:monospace;letter-spacing:.5px;"></div>
   </div>
   <nav class="nav">
     <div class="nav-lbl">LEARNING</div>
@@ -272,6 +273,11 @@ let sd = null;
 document.getElementById('uName').textContent = sess.FullName || '—';
 document.getElementById('uClass').textContent = 'Class: ' + (sess.Class || '—');
 document.getElementById('uAvatar').textContent = (sess.FullName||'S')[0].toUpperCase();
+// Show student ID if available
+if (sess.StudentID) {
+  var idEl = document.getElementById('uStudentId');
+  if (idEl) { idEl.textContent = sess.StudentID; idEl.style.display='inline'; }
+}
 
 async function api(action, data={}) {
   const res = await fetch(GAS, { method:'POST', redirect:'follow', body: JSON.stringify({action,...data}) });
