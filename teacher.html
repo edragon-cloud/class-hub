@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
 <title>IELTS Hub — Teacher Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fraunces:opsz,wght@9..144,700;9..144,900&display=swap" rel="stylesheet"/>
 <style>
@@ -1093,20 +1096,27 @@ function showAttPopup(cell,classId,email,date){
 
 async function removeAllAtt(classId, sessionDate){
   if(!confirm('Remove attendance for ALL students on '+sessionDate+'?\nThis deletes all records for this session.')) return;
-  // Get students from classData (more reliable than tuitionCache)
   var cls=classData.find(function(c){return c.classId===classId;});
   var students=cls?cls.students:[];
   if(!students.length){ toast('No students found for '+classId,'err'); return; }
   toast('Removing '+students.length+' records…','');
-  var count=0;
+  var count=0, errors=0;
   for(var i=0;i<students.length;i++){
     try{
       var r=await api('deleteAttRecord',{studentEmail:students[i].email,sessionDate:sessionDate});
-      if(r.success&&r.deleted>0) count++;
-    }catch(e){}
+      Logger && Logger.log && Logger.log(r);
+      if(r.success){
+        if(r.deleted>0) count++;
+        // deleted===0 means no record existed for this student on this date — that's OK
+      } else { errors++; }
+    }catch(e){ errors++; }
   }
-  toast('Removed '+count+'/'+students.length+' record(s) ✓','ok');
-  // Clear cache so next render fetches fresh data
+  if(count>0){
+    toast('Removed '+count+' record(s) ✓','ok');
+  } else {
+    // Likely no records existed for this date yet
+    toast('No records found for '+sessionDate+' (0 removed)','');
+  }
   delete tuitionCache[classId];
   delete tuitionCache[classId+'_totalMonths'];
   await loadTuition(classId);
@@ -1390,34 +1400,46 @@ function renderHWTracker(classId){
     Undone:{bg:'#fee2e2',color:'#991b1b',icon:'✗'},
   };
 
-  // Group homework into months of 8
+  // Group homework into months of 8 — always pad each month to exactly 8 slots
   var months=[];
   for(var i=0;i<hwList.length;i+=8){
-    months.push({month:Math.floor(i/8)+1, hw:hwList.slice(i,i+8)});
+    var chunk=hwList.slice(i,i+8);
+    // Pad to 8 with nulls
+    while(chunk.length<8) chunk.push(null);
+    months.push({month:Math.floor(i/8)+1, hw:chunk});
   }
+  // If no homework at all, still show month 1 with 8 empty slots
+  if(!months.length) months.push({month:1, hw:[null,null,null,null,null,null,null,null]});
 
-  // Build month header (colspan = num hw in month + 1 for summary)
+  // Build month header (colspan = 8 hw cols + 1 summary = 9)
   var monthHeaders='<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;min-width:150px;box-shadow:2px 0 8px rgba(0,0,0,.1)"></th>';
   months.forEach(function(mo){
     var bg=mo.month%2===0?'#e8e6e2':'var(--g100)';
-    monthHeaders+='<th colspan="'+(mo.hw.length+1)+'" style="padding:7px 4px;text-align:center;background:'+bg+
+    monthHeaders+='<th colspan="9" style="padding:7px 4px;text-align:center;background:'+bg+
       ';border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700;color:var(--g600)">Month '+mo.month+'</th>';
   });
 
-  // Build HW sub-headers
+  // Build HW sub-headers — always 8 cols + 1 Done
   var hwHeaders='<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;box-shadow:2px 0 8px rgba(0,0,0,.1)"></th>';
   months.forEach(function(mo){
     var bg2=mo.month%2===0?'#eae8e4':'#f5f4f2';
     mo.hw.forEach(function(hw,idx){
-      var col=typeColors[hw.type]||'#6b7280';
-      var tname=typeNames[hw.type]||hw.type;
-      hwHeaders+='<th style="padding:6px 4px;text-align:center;min-width:80px;background:'+bg2+';border-bottom:2px solid '+col+'">'+
-        '<div style="font-size:9px;font-weight:700;color:'+col+'">'+tname+'</div>'+
-        '<div style="font-size:9px;font-weight:600;color:var(--g900)">HW '+(idx+1)+'</div>'+
-        '<div style="font-size:8px;color:var(--g400)">Due: '+hw.deadline+'</div>'+
-      '</th>';
+      if(hw){
+        var col=typeColors[hw.type]||'#6b7280';
+        var tname=typeNames[hw.type]||hw.type;
+        hwHeaders+='<th style="padding:6px 4px;text-align:center;min-width:80px;background:'+bg2+';border-bottom:2px solid '+col+'">'+
+          '<div style="font-size:9px;font-weight:700;color:'+col+'">'+tname+'</div>'+
+          '<div style="font-size:9px;font-weight:600;color:var(--g900)">HW '+(idx+1)+'</div>'+
+          '<div style="font-size:8px;color:var(--g400)">Due: '+hw.deadline+'</div>'+
+        '</th>';
+      } else {
+        hwHeaders+='<th style="padding:6px 4px;text-align:center;min-width:70px;background:'+bg2+';border-bottom:2px dashed var(--g200)">'+
+          '<div style="font-size:9px;font-weight:700;color:var(--g300)">—</div>'+
+          '<div style="font-size:9px;color:var(--g300)">HW '+(idx+1)+'</div>'+
+        '</th>';
+      }
     });
-    // Summary column per month
+    // Done summary column
     hwHeaders+='<th style="padding:6px 4px;text-align:center;min-width:55px;background:#f0fdf4;border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:9px;font-weight:700;color:#166534">Done</th>';
   });
 
@@ -1425,6 +1447,10 @@ function renderHWTracker(classId){
   var rateRow='<td style="padding:6px 13px;background:var(--g100);font-size:11px;font-weight:700;color:var(--g600);position:sticky;left:0">Rate</td>';
   months.forEach(function(mo){
     mo.hw.forEach(function(hw){
+      if(!hw){
+        rateRow+='<td style="padding:5px;text-align:center;background:var(--g100);color:var(--g300)">—</td>';
+        return;
+      }
       var done=students.filter(function(s){return s.submissions[hw.hwId]&&s.submissions[hw.hwId].status==='Done';}).length;
       var total=students.length;
       var pct=total>0?Math.round(done/total*100):0;
@@ -1439,17 +1465,22 @@ function renderHWTracker(classId){
   var studentRows=students.map(function(s){
     var cells='';
     months.forEach(function(mo){
-      var monthDone=0, monthTotal=mo.hw.length;
+      var monthDone=0, monthReal=mo.hw.filter(function(h){return h!==null;}).length;
       mo.hw.forEach(function(hw){
+        if(!hw){
+          // Empty placeholder cell
+          cells+='<td style="padding:3px 4px;text-align:center;border-bottom:1px solid var(--g100);background:var(--g50)"></td>';
+          return;
+        }
         var sub=s.submissions[hw.hwId];
         var status=sub?sub.status:'Undone';
         if(status==='Done'||status==='Late')monthDone++;
         var cellId='hwc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+hw.hwId.replace(/[^a-zA-Z0-9]/g,'_');
         cells+='<td style="padding:3px 4px;text-align:center;border-bottom:1px solid var(--g100)" id="'+cellId+'"></td>';
       });
-      // Month summary
-      var sumBg=monthDone===monthTotal&&monthTotal>0?'#dcfce7':monthDone===0?'#fee2e2':'#fef9c3';
-      cells+='<td style="padding:4px 6px;text-align:center;background:'+sumBg+';border-bottom:1px solid var(--g100);border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700">'+monthDone+'/'+monthTotal+'</td>';
+      // Month summary — only count real slots
+      var sumBg=monthReal===0?'var(--g50)':monthDone===monthReal?'#dcfce7':monthDone===0?'#fee2e2':'#fef9c3';
+      cells+='<td style="padding:4px 6px;text-align:center;background:'+sumBg+';border-bottom:1px solid var(--g100);border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700">'+(monthReal>0?monthDone+'/'+monthReal:'—')+'</td>';
     });
     return '<tr>'+
       '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:150px">'+
@@ -1471,9 +1502,10 @@ function renderHWTracker(classId){
       '<tbody>'+studentRows+'</tbody>'+
     '</table></div></div>';
 
-  // Wire status dropdowns
+  // Wire status dropdowns (only real hw slots)
   students.forEach(function(s){
     hwList.forEach(function(hw){
+      if(!hw) return;
       var sub=s.submissions[hw.hwId];
       var status=sub?sub.status:'Undone';
       var cellId='hwc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+hw.hwId.replace(/[^a-zA-Z0-9]/g,'_');
