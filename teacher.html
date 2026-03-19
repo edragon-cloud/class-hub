@@ -118,6 +118,7 @@ textarea.fc{resize:vertical;min-height:65px;}
     <div class="nlbl">FINANCE</div>
     <button class="ni" onclick="showSec('tuition')"><span>💳</span>Tuition Tracker</button>
     <div class="nlbl">REPORTS</div>
+    <button class="ni" onclick="showSec('homework_tracker')"><span>📋</span>Homework Tracker</button>
     <button class="ni" onclick="showSec('diligence')"><span>🏆</span>Diligence Report</button>
     <button class="ni" onclick="showSec('export')"><span>📤</span>Monthly Export</button>
   </nav>
@@ -199,6 +200,16 @@ textarea.fc{resize:vertical;min-height:65px;}
       <div id="diligenceContent"><p style="padding:40px;text-align:center;color:var(--g400)">Select a class to view monthly rewards.</p></div>
     </div>
 
+    <!-- HOMEWORK TRACKER -->
+    <div id="sec-homework_tracker" class="sec">
+      <div class="ctabs" id="hwTrackerTabs">
+        <button class="ctab active" onclick="filterHWTracker(classData[0]&&classData[0].classId,this)">Select a class</button>
+      </div>
+      <div id="hwTrackerContent">
+        <p style="padding:40px;text-align:center;color:var(--g400)">Select a class above to view homework submissions.</p>
+      </div>
+    </div>
+
     <!-- ⑥ EXPORT -->
     <div id="sec-export" class="sec">
       <div style="background:white;border-radius:13px;padding:26px;box-shadow:var(--sh);">
@@ -233,7 +244,7 @@ textarea.fc{resize:vertical;min-height:65px;}
         <div style="font-size:14px;font-weight:600;margin-bottom:6px;">&#128295; Fix Duplicate Attendance</div>
         <p style="font-size:13px;color:var(--g400);margin-bottom:14px;">Delete duplicate session records caused by accidental double-tap of End Session.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-          <div style="flex:1;min-width:200px;"><label class="fl">Student Email</label><input type="email" class="fc" id="resetEmail" placeholder="student@email.com"/></div>
+          <div style="flex:1;min-width:200px;"><label class="fl">Student Email or ID</label><input type="text" class="fc" id="resetEmail" placeholder="email@gmail.com or IE42-001"/></div>
           <div style="flex:1;min-width:140px;"><label class="fl">Session Date (optional)</label><input type="date" class="fc" id="resetDate"/></div>
         </div>
         <div id="resetResult" style="display:none;padding:9px 13px;border-radius:7px;font-size:13px;margin-bottom:10px;"></div>
@@ -361,6 +372,7 @@ async function init() {
     renderDiligenceTabs();
     renderTuitionTabs();
     buildMgmt();
+    buildHWTrackerTabs();
   } catch(e) { toast('Connection error', 'err'); }
 }
 
@@ -368,7 +380,8 @@ async function init() {
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
 var secTitles = {overview:'Class Overview', mgmt:'Class Management', weekly:'Weekly Schedule',
-  tuition:'Tuition Tracker', diligence:'Diligence Report', export:'Monthly Export', settings:'Settings'};
+  tuition:'Tuition Tracker', homework_tracker:'Homework Tracker',
+  diligence:'Diligence Report', export:'Monthly Export', settings:'Settings'};
 
 function showSec(name) {
   document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('active');});
@@ -379,6 +392,7 @@ function showSec(name) {
   document.getElementById('pageTitle').textContent = secTitles[name];
   if (name==='weekly') loadWeekly();
   if (name==='mgmt')   buildMgmt();
+  if (name==='homework_tracker') buildHWTrackerTabs();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -791,6 +805,7 @@ async function loadTuition(classId) {
     var r = await api('getTuitionForClass', {classId:classId});
     if (!r.success) { el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>'; return; }
     tuitionCache[classId] = r.students;
+    tuitionCache[classId+'_totalMonths'] = r.totalScheduledMonths || 1;
     renderTuitionGrid(classId);
   } catch(e) { el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>'; }
 }
@@ -801,13 +816,15 @@ function renderTuitionGrid(classId) {
   var el = document.getElementById('tuitionContent');
   if (!students.length) { el.innerHTML='<p style="padding:40px;text-align:center;color:var(--g400)">No students</p>'; return; }
 
-  // Find max months
-  var maxMonths = 0;
+  // Use total scheduled months from GAS (shows all months even future ones)
+  var scheduledMonths = tuitionCache[classId+'_totalMonths'] || 1;
+  // Also check max from attendance
+  var attMaxMonths = 0;
   students.forEach(function(s){
     var t = s.monthsCompleted + (s.sessInCycle>0?1:0);
-    if(t>maxMonths) maxMonths=t;
+    if(t>attMaxMonths) attMaxMonths=t;
   });
-  maxMonths = Math.max(maxMonths, 1);
+  var maxMonths = Math.max(scheduledMonths, attMaxMonths, 1);
 
   // Get scheduled session dates (non-Day0), grouped into months of 8
   var schedDates = schedSess
@@ -862,8 +879,9 @@ function renderTuitionGrid(classId) {
       '</td>';
     }
     return '<tr>'+
-      '<td style="padding:6px 12px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:140px;max-width:200px;width:auto;">'+
+      '<td style="padding:6px 12px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:160px;max-width:220px;width:auto;">'+
         '<div style="font-size:13px;font-weight:700;white-space:nowrap;">'+s.name+'</div>'+
+        '<div style="font-size:10px;color:var(--g400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">'+s.email+'</div>'+
         '<div style="font-size:9px;color:var(--g400)">'+s.total+' sess</div>'+
       '</td>'+cells+'</tr>';
   }).join('');
@@ -902,7 +920,7 @@ function renderTuitionGrid(classId) {
       var cell = document.getElementById(cellId);
       if (!cell) continue;
       var payment = s.monthPayments[moNo];
-      buildPaidCell(cell, classId, s.email, moNo, !!payment, payment ? payment.date : '');
+      buildPaidCell(cell, classId, s.email, moNo, !!payment, payment ? payment.date : '', payment ? payment.note : '');
     }
   });
 }
@@ -973,10 +991,14 @@ function showAttPopup(cell, classId, email, date, currentlyAttended) {
   }, 10);
 }
 
-function buildPaidCell(cell, classId, email, moNo, paid, paidDate) {
+function buildPaidCell(cell, classId, email, moNo, paid, paidDate, note) {
   cell.innerHTML = '';
   var wrap = document.createElement('div');
-  wrap.style = 'display:flex;align-items:center;gap:6px;justify-content:center;';
+  wrap.style = 'display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:2px 0;';
+
+  // Top row: checkbox + Paid/Unpaid + date
+  var topRow = document.createElement('div');
+  topRow.style = 'display:flex;align-items:center;gap:5px;flex-wrap:wrap;';
 
   var cb = document.createElement('input');
   cb.type = 'checkbox'; cb.checked = paid;
@@ -989,19 +1011,32 @@ function buildPaidCell(cell, classId, email, moNo, paid, paidDate) {
   lbl.style = 'font-size:11px;font-weight:700;color:'+(paid?'#16a34a':'#dc2626');
   lbl.textContent = paid ? 'Paid' : 'Unpaid';
 
-  wrap.appendChild(cb);
-  wrap.appendChild(lbl);
+  topRow.appendChild(cb);
+  topRow.appendChild(lbl);
 
-  // Date input inline to the right of "Paid"
   if (paid && paidDate) {
     var dateInput = document.createElement('input');
     dateInput.type = 'date'; dateInput.value = paidDate;
-    dateInput.style = 'font-size:10px;border:1px solid #86efac;border-radius:4px;padding:1px 4px;background:#f0fdf4;color:#166534;cursor:pointer;width:88px;';
+    dateInput.style = 'font-size:10px;border:1px solid #86efac;border-radius:4px;padding:1px 4px;background:#f0fdf4;color:#166534;cursor:pointer;width:90px;';
     dateInput.onchange = (function(cid,em,mo){ return function(){
       updatePaidDate(cid,em,mo,this);
     };})(classId, email, moNo);
-    wrap.appendChild(dateInput);
+    topRow.appendChild(dateInput);
   }
+  wrap.appendChild(topRow);
+
+  // Note row (always shown when month is active)
+  var noteInput = document.createElement('input');
+  noteInput.type = 'text';
+  noteInput.value = note || '';
+  noteInput.placeholder = 'Note…';
+  noteInput.style = 'font-size:10px;border:1px solid var(--g200);border-radius:4px;padding:2px 6px;width:100%;color:var(--g600);background:white;outline:none;';
+  noteInput.onfocus = function(){ this.style.borderColor='var(--red)'; };
+  noteInput.onblur = (function(cid,em,mo,el){ return function(){
+    api('markTuitionPaid',{classId:cid,studentEmail:em,monthNo:mo,paid:true,paidDate:paidDate||new Date().toISOString().split('T')[0],note:el.value})
+      .then(function(){ /* silent save */ }).catch(function(){});
+  };})(classId, email, moNo, noteInput);
+  wrap.appendChild(noteInput);
 
   cell.appendChild(wrap);
 }
@@ -1015,7 +1050,7 @@ async function togglePaidCell(classId, email, moNo, cb, labelEl) {
     if(st){if(paid)st.monthPayments[moNo]={date:today,note:''};else delete st.monthPayments[moNo];}
     var cellId='pc-'+classId.replace(/ /g,'_')+'-'+email.replace(/[@.]/g,'_')+'-'+moNo;
     var cell=document.getElementById(cellId);
-    if(cell) buildPaidCell(cell,classId,email,moNo,paid,paid?today:'');
+    if(cell) buildPaidCell(cell,classId,email,moNo,paid,paid?today:'','');
     toast(paid?'Marked paid ✓':'Marked unpaid','ok');
   } catch(e){toast('Error','err');cb.checked=!paid;}
 }
@@ -1045,7 +1080,208 @@ function renderTuitionTabs() {
 }
 
 // ═══════════════════════════════════════════════════════
-// ⑤ DILIGENCE
+// HOMEWORK TRACKER
+// ═══════════════════════════════════════════════════════
+var hwTrackerCache = {}; // classId → {homework, students}
+
+function buildHWTrackerTabs() {
+  var el = document.getElementById('hwTrackerTabs');
+  el.innerHTML = '';
+  if (!classData.length) { el.innerHTML='<p style="color:var(--g400);font-size:13px">No classes loaded.</p>'; return; }
+  classData.forEach(function(cls, i) {
+    var b = document.createElement('button');
+    b.className = 'ctab' + (i===0?' active':'');
+    b.textContent = cls.classId;
+    b.onclick = (function(cid, btn){ return function(){ filterHWTracker(cid, btn); }; })(cls.classId, b);
+    el.appendChild(b);
+  });
+  // Auto-load first class
+  filterHWTracker(classData[0].classId, el.firstChild);
+}
+
+async function filterHWTracker(classId, btn) {
+  document.querySelectorAll('#hwTrackerTabs .ctab').forEach(function(b){b.classList.remove('active');});
+  if (btn) btn.classList.add('active');
+  if (!classId) return;
+  await loadHWTracker(classId);
+}
+
+async function loadHWTracker(classId) {
+  var el = document.getElementById('hwTrackerContent');
+  el.innerHTML = '<p style="padding:30px;text-align:center;color:var(--g400)">Loading homework data…</p>';
+  try {
+    var r = await api('getHomeworkTracker', {classId:classId});
+    if (!r.success) { el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>'; return; }
+    hwTrackerCache[classId] = r;
+    renderHWTracker(classId);
+  } catch(e) { el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>'; }
+}
+
+function renderHWTracker(classId) {
+  var data = hwTrackerCache[classId];
+  if (!data) return;
+  var el = document.getElementById('hwTrackerContent');
+  var hwList = data.homework || [];
+  var students = data.students || [];
+
+  if (!hwList.length) {
+    el.innerHTML = '<div style="background:white;border-radius:13px;padding:40px;box-shadow:var(--sh);text-align:center;color:var(--g400)">'+
+      '<div style="font-size:32px;margin-bottom:10px">📝</div>'+
+      '<div style="font-weight:600;margin-bottom:6px">No homework assigned yet</div>'+
+      '<div style="font-size:13px">Assign homework via Class Management → End Session or Assign HW button</div>'+
+    '</div>';
+    return;
+  }
+
+  // Group HW by month (based on day label / session date)
+  var typeColors = {W:'#f97316',L:'#3b82f6',S:'#8b5cf6',V:'#22c55e',R:'#ec4899'};
+  var typeNames  = {W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading'};
+  var statusConfig = {
+    Done:    {bg:'#dcfce7',color:'#166534',icon:'✓'},
+    Late:    {bg:'#fef9c3',color:'#854d0e',icon:'⏱'},
+    Partial: {bg:'#dbeafe',color:'#1e40af',icon:'½'},
+    Undone:  {bg:'#fee2e2',color:'#991b1b',icon:'✗'},
+  };
+
+  // Build header columns for each HW
+  var hwHeaders = hwList.map(function(hw) {
+    var col = typeColors[hw.type] || '#6b7280';
+    return '<th style="padding:8px 6px;text-align:center;min-width:80px;background:'+col+'18;border-bottom:2px solid '+col+';">'+
+      '<div style="font-size:9px;font-weight:700;color:'+col+'">'+( typeNames[hw.type]||hw.type)+'</div>'+
+      '<div style="font-size:10px;font-weight:600;color:var(--g900)">'+hw.dayLabel+'</div>'+
+      '<div style="font-size:9px;color:var(--g400)">Due: '+hw.deadline+'</div>'+
+    '</th>';
+  }).join('');
+
+  // Summary row counts
+  var summaryRow = hwList.map(function(hw) {
+    var done = students.filter(function(s){ return s.submissions[hw.hwId]&&s.submissions[hw.hwId].status==='Done'; }).length;
+    var late = students.filter(function(s){ return s.submissions[hw.hwId]&&s.submissions[hw.hwId].status==='Late'; }).length;
+    var total = students.length;
+    var pct = total>0?Math.round((done+late)/total*100):0;
+    return '<td style="padding:6px;text-align:center;background:var(--g100)">'+
+      '<div style="font-size:11px;font-weight:700;color:'+(pct>=80?'#16a34a':pct>=50?'#d97706':'#dc2626')+'">'+done+'/'+total+'</div>'+
+      '<div style="font-size:9px;color:var(--g400)">'+pct+'% done</div>'+
+    '</td>';
+  }).join('');
+
+  // Student rows
+  var studentRows = students.map(function(s) {
+    var hwCells = hwList.map(function(hw) {
+      var sub = s.submissions[hw.hwId];
+      var status = sub ? sub.status : 'Undone';
+      var cfg = statusConfig[status] || statusConfig.Undone;
+      var cellId = 'hwc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+hw.hwId.replace(/[^a-zA-Z0-9]/g,'_');
+      return '<td style="padding:4px 6px;text-align:center" id="'+cellId+'"></td>';
+    }).join('');
+
+    var sumBg = s.summary.done===s.summary.total&&s.summary.total>0?'#dcfce7':
+                s.summary.undone===s.summary.total?'#fee2e2':'#fef9c3';
+    return '<tr>'+
+      '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:140px;">'+
+        '<div style="font-size:13px;font-weight:700;">'+s.name+'</div>'+
+        (s.studentId?'<div style="font-size:10px;color:#1d4ed8;font-family:monospace">'+s.studentId+'</div>':'')+
+      '</td>'+
+      hwCells+
+      '<td style="padding:4px 13px;background:'+sumBg+';border-left:2px solid var(--g200);min-width:80px;text-align:center;">'+
+        '<div style="font-size:12px;font-weight:700">'+s.summary.done+'/'+s.summary.total+'</div>'+
+        '<div style="font-size:9px;color:var(--g600)">'+s.summary.late+'L · '+s.summary.partial+'P</div>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+
+  el.innerHTML = '<div style="overflow-x:auto">'+
+    '<table style="border-collapse:collapse;font-size:12px;background:white;border-radius:13px;box-shadow:var(--sh);overflow:hidden;">'+
+      '<thead>'+
+        '<tr>'+
+          '<th style="padding:8px 13px;text-align:left;background:var(--g900);color:white;position:sticky;left:0;z-index:2;">Student</th>'+
+          hwHeaders+
+          '<th style="padding:8px 13px;text-align:center;background:var(--g900);color:white;min-width:80px;border-left:2px solid rgba(255,255,255,.2)">Summary</th>'+
+        '</tr>'+
+        '<tr>'+
+          '<td style="padding:6px 13px;background:var(--g100);font-size:11px;font-weight:700;color:var(--g600);position:sticky;left:0">Completion rate</td>'+
+          summaryRow+
+          '<td style="background:var(--g100);border-left:2px solid var(--g200)"></td>'+
+        '</tr>'+
+      '</thead>'+
+      '<tbody>'+studentRows+'</tbody>'+
+    '</table>'+
+  '</div>';
+
+  // Wire up status dropdowns via DOM
+  students.forEach(function(s) {
+    hwList.forEach(function(hw) {
+      var sub = s.submissions[hw.hwId];
+      var status = sub ? sub.status : 'Undone';
+      var cellId = 'hwc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+hw.hwId.replace(/[^a-zA-Z0-9]/g,'_');
+      var cell = document.getElementById(cellId);
+      if (!cell) return;
+      buildHWCell(cell, classId, s.email, hw, status, sub?sub.note:'');
+    });
+  });
+}
+
+function buildHWCell(cell, classId, email, hw, status, note) {
+  var statusConfig = {
+    Done:    {bg:'#dcfce7',color:'#166534',icon:'✓'},
+    Late:    {bg:'#fef9c3',color:'#854d0e',icon:'⏱'},
+    Partial: {bg:'#dbeafe',color:'#1e40af',icon:'½'},
+    Undone:  {bg:'#fee2e2',color:'#991b1b',icon:'✗'},
+  };
+  var cfg = statusConfig[status] || statusConfig.Undone;
+  cell.innerHTML = '';
+  cell.style = 'padding:4px 6px;text-align:center;';
+
+  var wrap = document.createElement('div');
+  wrap.style = 'display:flex;flex-direction:column;align-items:center;gap:3px;';
+
+  // Status select button
+  var sel = document.createElement('select');
+  sel.style = 'padding:3px 5px;border-radius:5px;border:none;background:'+cfg.bg+';color:'+cfg.color+';font-size:11px;font-weight:700;cursor:pointer;text-align:center;width:72px;';
+  ['Done','Late','Partial','Undone'].forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s; opt.textContent = statusConfig[s].icon+' '+s;
+    if (s===status) opt.selected=true;
+    sel.appendChild(opt);
+  });
+  sel.onchange = (function(cid,em,h,noteEl){ return function(){
+    var newStatus = this.value;
+    var cfg2 = statusConfig[newStatus];
+    this.style.background = cfg2.bg; this.style.color = cfg2.color;
+    api('saveHomeworkSubmission',{
+      classId:cid, studentEmail:em,
+      hwId:h.hwId, sessionDate:h.sessionDate,
+      dayLabel:h.dayLabel, type:h.type, content:h.content,
+      status:newStatus, note:noteEl?noteEl.value:''
+    }).then(function(){
+      // Update local cache summary
+      if(hwTrackerCache[cid]){
+        var st=hwTrackerCache[cid].students.find(function(s){return s.email===em;});
+        if(st){ st.submissions[h.hwId]={status:newStatus,note:noteEl?noteEl.value:''}; }
+      }
+      toast(em.split('@')[0]+': '+newStatus,'ok');
+    }).catch(function(){toast('Error saving','err');});
+  };})(classId, email, hw, null);
+  wrap.appendChild(sel);
+  // Update sel's note reference after noteInput is created
+  var noteInput = document.createElement('input');
+  noteInput.type='text'; noteInput.value=note||''; noteInput.placeholder='note…';
+  noteInput.style='font-size:9px;border:1px solid var(--g200);border-radius:4px;padding:1px 4px;width:68px;color:var(--g600);';
+  noteInput.onfocus=function(){this.style.borderColor='var(--red)';};
+  noteInput.onblur=(function(cid,em,h,selEl){ return function(){
+    api('saveHomeworkSubmission',{
+      classId:cid, studentEmail:em,
+      hwId:h.hwId, sessionDate:h.sessionDate,
+      dayLabel:h.dayLabel, type:h.type, content:h.content,
+      status:selEl.value, note:this.value
+    }).catch(function(){});
+  };})(classId, email, hw, sel);
+  wrap.appendChild(noteInput);
+  cell.appendChild(wrap);
+}
+
+// Hook buildHWTrackerTabs into init
+
 // ═══════════════════════════════════════════════════════
 function renderDiligenceTabs() {
   var el=document.getElementById('diligenceTabs');
@@ -1136,13 +1372,18 @@ function previewReport(){
 // SETTINGS
 // ═══════════════════════════════════════════════════════
 async function checkAttRecords(){
-  var email=document.getElementById('resetEmail').value.trim();
+  var input=document.getElementById('resetEmail').value.trim();
   var res=document.getElementById('resetResult');
   var list=document.getElementById('attRecordsList');
-  if(!email){res.textContent='Enter student email.';res.style.cssText='display:block;padding:9px 13px;border-radius:7px;background:#fee2e2;color:#991b1b;font-size:13px;';return;}
-  var cls=null;
-  classData.forEach(function(cd){cd.students.forEach(function(s){if(s.email===email)cls=s.class;});});
-  if(!cls){res.textContent='Student not found.';res.style.cssText='display:block;padding:9px 13px;border-radius:7px;background:#fee2e2;color:#991b1b;font-size:13px;';return;}
+  if(!input){res.textContent='Enter student email or ID.';res.style.cssText='display:block;padding:9px 13px;border-radius:7px;background:#fee2e2;color:#991b1b;font-size:13px;';return;}
+  // Resolve: could be email or studentId
+  var email=input, cls=null;
+  classData.forEach(function(cd){cd.students.forEach(function(s){
+    if(s.email===input || s.studentId===input){ email=s.email; cls=s.class; }
+  });});
+  if(!cls){res.textContent='Student not found. Try email or ID like IE42-001.';res.style.cssText='display:block;padding:9px 13px;border-radius:7px;background:#fee2e2;color:#991b1b;font-size:13px;';return;}
+  // Store resolved email for delete button
+  document.getElementById('resetEmail').value=email;
   try{
     var r=await api('resetAttendance',{studentEmail:email,classId:cls});
     if(!r.success){res.textContent='Error: '+r.message;res.style.cssText='display:block;padding:9px 13px;border-radius:7px;background:#fee2e2;color:#991b1b;font-size:13px;';return;}

@@ -390,24 +390,31 @@ function renderTuition() {
   const t = sd.tuition || {};
   const total = t.total||0, monthsUsed = t.monthsUsed||0, sessInCycle = t.sessInCycle||0;
   const pct = Math.round((sessInCycle/8)*100);
+  const payments = t.payments || {}; // { "1":{date,note}, "2":{date,note} }
   // Only count non-Day-0 sessions with real attendance
   const att = (sd.attendance||[]).filter(a=>a.status && a.dayLabel && a.dayLabel.toLowerCase().replace(/ /g,'').replace('day','')!=='0');
-  const allSessions = sd.sessions||[]; // full schedule including Day 0
+  const allSessions = sd.sessions||[];
+  const schedSessions = allSessions.filter(s=>s.dayLabel && s.dayLabel.toLowerCase().replace(/ /g,'').replace('day','')!=='0' && s.date);
+
+  // Show all scheduled months (not just attended ones)
+  const totalScheduledMonths = t.totalScheduledMonths || Math.max(monthsUsed+1, Math.ceil(schedSessions.length/8)||1);
 
   const fmtDot = (d) => {
     if(!d) return '';
-    const p = d.split('-'); // yyyy-MM-dd
-    return p.length===3 ? p[2]+'/'+p[1] : d.slice(5); // DD/MM
+    const p = d.split('-');
+    return p.length===3 ? p[2]+'/'+p[1] : d.slice(5);
   };
 
-  const monthsHtml = Array(monthsUsed+1).fill(0).map((_,mo)=>{
-    const chunk = att.slice(mo*8, mo*8+8); // attended sessions for this month
+  const monthsHtml = Array(totalScheduledMonths).fill(0).map((_,mo)=>{
+    const chunk = att.slice(mo*8, mo*8+8);
     const isComplete = chunk.length===8;
     const isCurrent = mo===monthsUsed;
-    // Get scheduled sessions for reference dates
-    const schedSessions = allSessions.filter(s=>s.dayLabel && s.dayLabel.toLowerCase().replace(/ /g,'').replace('day','')!=='0' && s.date);
+    const isFuture = mo > monthsUsed;
     const schedChunk = schedSessions.slice(mo*8, mo*8+8);
     const lastDate = chunk.length ? chunk[chunk.length-1].date : null;
+    const moNo = String(mo+1);
+    const payment = payments[moNo];
+    const paid = !!payment;
 
     const dots = Array(8).fill(0).map((_,i)=>{
       const attended = chunk[i];
@@ -433,13 +440,21 @@ function renderTuition() {
       return '<div style="width:52px;height:52px;border-radius:9px;background:var(--g100);color:var(--g400);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">'+(i+1)+'</div>';
     }).join('');
 
-    return '<div style="background:'+(isCurrent?'white':isComplete?'#f0fdf4':'white')+';border:1px solid '+(isCurrent?'var(--red)':isComplete?'#86efac':'var(--g200)')+';border-radius:10px;padding:16px;margin-bottom:10px;">'+
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'+
+      return '<div style="background:'+(isCurrent?'white':isComplete?'#f0fdf4':isFuture?'#fafaf9':'white')+';border:1px solid '+(isCurrent?'var(--red)':isComplete?'#86efac':isFuture?'var(--g100)':'var(--g200)')+';border-radius:10px;padding:16px;margin-bottom:10px;'+(isFuture?'opacity:.7':'')+'" >'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">'+
         '<div style="font-size:14px;font-weight:700;">Month '+(mo+1)+
           (isCurrent?' <span style="color:var(--red);font-size:11px;margin-left:6px">&#9679; Current</span>':
-           isComplete?' <span style="color:#16a34a;font-size:11px;margin-left:6px">&#10003; Complete</span>':'')+
+           isComplete?' <span style="color:#16a34a;font-size:11px;margin-left:6px">&#10003; Complete</span>':
+           isFuture?' <span style="color:var(--g400);font-size:11px;margin-left:6px">Upcoming</span>':'')+
         '</div>'+
-        (lastDate?'<div style="font-size:11px;color:var(--g400)">Last: '+fmtDot(lastDate)+'</div>':'')+
+        // Payment status badge
+        '<div style="display:flex;align-items:center;gap:8px;">'+
+          (lastDate?'<span style="font-size:11px;color:var(--g400)">Last: '+fmtDot(lastDate)+'</span>':'')+
+          '<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:'+(paid?'#dcfce7':'#fee2e2')+';color:'+(paid?'#166534':'#991b1b')+'">'+
+            (paid?'&#10003; Paid '+fmtDot(payment.date):'Unpaid')+
+          '</span>'+
+          (paid && payment.note?'<span style="font-size:10px;color:var(--g400);font-style:italic">'+payment.note+'</span>':'')+
+        '</div>'+
       '</div>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+dots+'</div>'+
       (isCurrent?'<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="font-weight:600">'+sessInCycle+'/8 sessions</span><span style="color:var(--g400)">'+pct+'%</span></div><div class="progress-track"><div class="progress-fill" style="width:'+pct+'%"></div></div></div>':'')+
