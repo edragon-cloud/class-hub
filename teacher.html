@@ -354,10 +354,6 @@ textarea.fc{resize:vertical;min-height:60px;}
 
     <!-- ④ HOMEWORK TRACKER -->
     <div id="sec-homework" class="sec">
-      <div class="sec-hd">
-        <div><div class="sec-title">Homework Tracker</div>
-        <div class="sec-sub">Theo dõi nộp bài theo tháng · Assign homework qua End Session</div></div>
-      </div>
       <div class="ctabs" id="hwTrackerTabs"><button class="ctab active">Select a class</button></div>
       <div id="hwTrackerContent">
         <p style="padding:40px;text-align:center;color:var(--g400)">Select a class above to view homework submissions.</p>
@@ -366,10 +362,6 @@ textarea.fc{resize:vertical;min-height:60px;}
 
     <!-- ⑤ PARTICIPATION REPORT -->
     <div id="sec-participation" class="sec">
-      <div class="sec-hd">
-        <div><div class="sec-title">Participation Report</div>
-        <div class="sec-sub">Track how many times each student speaks per session</div></div>
-      </div>
       <div class="ctabs" id="partTabs"><button class="ctab active" onclick="filterPart('all',this)">All Classes</button></div>
       <div id="partContent">
         <p style="padding:40px;text-align:center;color:var(--g400)">Select a class to view participation data.</p>
@@ -456,7 +448,7 @@ textarea.fc{resize:vertical;min-height:60px;}
 <!-- END SESSION (multi-step) -->
 <div class="mo" id="moFinish">
   <div class="md" style="max-width:560px">
-    <div class="md-h">✅ End Session — <span id="moFinishClass" style="color:var(--red)"></span></div>
+    <div class="md-h">✅ End Session — <select id="moFinishClassSel" style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--red);border:none;background:transparent;cursor:pointer;outline:none;padding:0"></select></div>
     <div class="md-sub">Complete attendance, then assign homework for this session.</div>
 
     <div class="step-tabs">
@@ -597,6 +589,7 @@ var hwEntryCount = 0;
 var currentFinishClass = null;
 var spinCandidates = [];
 var archiveMode = 'students';
+var activeClassId = null; // tracks the last class tab selected in any tracker
 
 // ═══════════════════════════════════════════════════════
 // API
@@ -656,6 +649,8 @@ async function init() {
     buildPartTabs();
     buildHWTrackerTabs();
     updateStats();
+    // Background preload: silently fetch data for all classes after UI is ready
+    setTimeout(function(){ preloadAllClasses(); }, 800);
   } catch(e) { toast('Connection error','err'); }
 }
 
@@ -668,8 +663,29 @@ function updateStats() {
   document.getElementById('statTotal').textContent = total;
   document.getElementById('statClasses').textContent = classes;
   document.getElementById('statPresent').textContent = present;
-  // HW stat — leave as — for now (needs separate query)
   document.getElementById('statHW').textContent = '—';
+}
+
+// Silently preload tuition + schedule data for all classes in background
+async function preloadAllClasses(){
+  for(var i=0;i<classData.length;i++){
+    var cid=classData[i].classId;
+    try{
+      // Preload schedule if missing
+      if(!allSchedules[cid]){
+        var rs=await api('getClassDetail',{classId:cid});
+        if(rs&&rs.success) allSchedules[cid]=rs.schedule||[];
+      }
+      // Preload tuition data if missing
+      if(!tuitionCache[cid]){
+        var rt=await api('getTuitionForClass',{classId:cid});
+        if(rt&&rt.success){
+          tuitionCache[cid]=rt.students;
+          tuitionCache[cid+'_totalMonths']=rt.totalScheduledMonths||1;
+        }
+      }
+    }catch(e){/* silent fail */}
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -851,6 +867,7 @@ function buildTuitionTabs() {
 function filterTuition(classId,btn){
   document.querySelectorAll('#tuitionTabs .ctab').forEach(function(b){b.classList.remove('active');});
   if(btn)btn.classList.add('active');
+  if(classId&&classId!=='all') activeClassId=classId;
   loadTuition(classId);
 }
 
@@ -878,13 +895,23 @@ async function loadTuition(classId){
     return;
   }
 
+  // ── Use cache if available (instant render)
+  if(tuitionCache[classId] && allSchedules[classId]){
+    renderTuitionGrid(classId);
+    return;
+  }
+
   el.innerHTML='<p style="padding:30px;text-align:center;color:var(--g400)">Loading…</p>';
   try {
-    if(!allSchedules[classId]){
-      var rs=await api('getClassDetail',{classId:classId});
-      if(rs.success)allSchedules[classId]=rs.schedule||[];
-    }
-    var r=await api('getTuitionForClass',{classId:classId});
+    // Fetch schedule and tuition data in parallel
+    var promises=[];
+    if(!allSchedules[classId]) promises.push(api('getClassDetail',{classId:classId}));
+    else promises.push(Promise.resolve(null));
+    promises.push(api('getTuitionForClass',{classId:classId}));
+
+    var results=await Promise.all(promises);
+    if(results[0]&&results[0].success) allSchedules[classId]=results[0].schedule||[];
+    var r=results[1];
     if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
     tuitionCache[classId]=r.students;
     tuitionCache[classId+'_totalMonths']=r.totalScheduledMonths||1;
@@ -914,16 +941,20 @@ function renderTuitionGrid(classId){
     monthHeaders+='<th colspan="9" style="padding:7px 4px;text-align:center;background:'+bg+';border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700;color:var(--g600)">Month '+mo+'</th>';
   }
 
-  // ── Header row 2: Session numbers + dates
+  // ── Header row 2: Session numbers + dates + Remove All button
   var sessHeaders='<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;box-shadow:2px 0 8px rgba(0,0,0,.15)"></th>';
   for(var mo2=1;mo2<=maxMonths;mo2++){
     var bg2=mo2%2===0?'#eae8e4':'#f5f4f2';
     for(var si=1;si<=8;si++){
       var gIdx=(mo2-1)*8+(si-1);
-      var dl=schedDates[gIdx]?schedDates[gIdx].split('-').slice(1).reverse().join('/'):'';
-      sessHeaders+='<th style="padding:4px 2px;text-align:center;background:'+bg2+';font-size:9px;color:var(--g400);width:34px;min-width:34px">'+
+      var sd=schedDates[gIdx]||'';
+      var dl=sd?sd.split('-').slice(1).reverse().join('/'):'';
+      sessHeaders+='<th style="padding:3px 1px;text-align:center;background:'+bg2+';font-size:9px;color:var(--g400);width:34px;min-width:34px">'+
         '<div style="font-weight:700;color:var(--g600)">'+si+'</div>'+
-        '<div style="font-size:8px;white-space:nowrap">'+dl+'</div></th>';
+        '<div style="font-size:8px;white-space:nowrap">'+dl+'</div>'+
+        (sd?'<button onclick="removeAllAtt(\''+classId+'\',\''+sd+'\')" title="Remove all attendance for this session" '+
+          'style="margin-top:2px;padding:1px 3px;border:none;background:#fee2e2;color:#991b1b;border-radius:3px;font-size:8px;cursor:pointer;line-height:1.2;width:28px">✕All</button>':'')+
+      '</th>';
     }
     sessHeaders+='<th style="padding:4px 6px;text-align:center;background:#f0fdf4;border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:10px;color:#166534;white-space:nowrap;min-width:100px">💳 Paid?</th>';
   }
@@ -1041,6 +1072,23 @@ function showAttPopup(cell,classId,email,date){
   },10);
 }
 
+async function removeAllAtt(classId, sessionDate){
+  if(!confirm('Remove attendance for ALL students on '+sessionDate+'?\nThis deletes all records for this session.')) return;
+  var students=tuitionCache[classId]||[];
+  if(!students.length){ toast('No student data','err'); return; }
+  var count=0;
+  for(var i=0;i<students.length;i++){
+    try{
+      var r=await api('deleteAttRecord',{studentEmail:students[i].email,sessionDate:sessionDate});
+      if(r.success&&r.deleted>0) count++;
+    }catch(e){}
+  }
+  toast('Removed '+count+' record(s) ✓','ok');
+  delete tuitionCache[classId];
+  delete tuitionCache[classId+'_totalMonths'];
+  await loadTuition(classId);
+}
+
 function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
   cell.innerHTML='';
   var wrap=document.createElement('div');
@@ -1112,19 +1160,31 @@ function switchStep(idx, btn) {
 }
 
 function openFinishFor(classId) {
-  // If classId null, use first class or show selector
-  currentFinishClass = classId || (classData.length ? classData[0].classId : null);
+  // Use passed classId → activeClassId → first class (priority order)
+  currentFinishClass = classId || activeClassId || (classData.length ? classData[0].classId : null);
   if (!currentFinishClass) { toast('No class data loaded','err'); return; }
-  document.getElementById('moFinishClass').textContent = currentFinishClass;
+
+  // Update class selector dropdown in modal
+  var selEl = document.getElementById('moFinishClassSel');
+  if(selEl){
+    selEl.innerHTML = classData.map(function(c){
+      return '<option value="'+c.classId+'"'+(c.classId===currentFinishClass?' selected':'')+'>'+c.classId+'</option>';
+    }).join('');
+    selEl.onchange = function(){ currentFinishClass=this.value; refreshModalStudents(); };
+  }
+
   document.getElementById('moDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('moDayLabel').value = '';
   document.getElementById('day0Warn').style.display='none';
-  switchStep(0, document.querySelector('.step-tab'));
-  // Reset HW entries
+  switchStep(0, document.querySelectorAll('.step-tab')[0]);
   hwEntryCount=0;
   document.getElementById('hwEntries').innerHTML='';
   addHWEntry();
-  // Load student list
+  refreshModalStudents();
+  document.getElementById('moFinish').classList.add('show');
+}
+
+function refreshModalStudents(){
   var cls=classData.find(function(c){return c.classId===currentFinishClass;});
   var students=cls?cls.students:[];
   document.getElementById('moAttList').innerHTML=students.map(function(s){
@@ -1137,7 +1197,6 @@ function openFinishFor(classId) {
         '<option value="Absent">✗ Absent</option>'+
       '</select></div>';
   }).join('');
-  // Populate participation list (step 2)
   document.getElementById('moPartList').innerHTML=students.map(function(s){
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--g50);border-radius:7px;border:1px solid var(--g100)">'+
       '<div><div style="font-size:13px;font-weight:600">'+s.name+'</div>'+
@@ -1149,7 +1208,6 @@ function openFinishFor(classId) {
           'onfocus="this.style.borderColor=\'var(--red)\'" onblur="this.style.borderColor=\'var(--g200)\'"/>'+
       '</div></div>';
   }).join('');
-  document.getElementById('moFinish').classList.add('show');
 }
 
 function checkDay0(input){
@@ -1265,12 +1323,18 @@ function buildHWTrackerTabs(){
 async function filterHWTracker(classId,btn){
   document.querySelectorAll('#hwTrackerTabs .ctab').forEach(function(b){b.classList.remove('active');});
   if(btn)btn.classList.add('active');
+  if(classId&&classId!=='all') activeClassId=classId;
   if(!classId)return;
   await loadHWTracker(classId);
 }
 
 async function loadHWTracker(classId){
   var el=document.getElementById('hwTrackerContent');
+  // Use cache if available
+  if(hwTrackerCache[classId]){
+    renderHWTracker(classId);
+    return;
+  }
   el.innerHTML='<p style="padding:30px;text-align:center;color:var(--g400)">Loading…</p>';
   try{
     var r=await api('getHomeworkTracker',{classId:classId});
@@ -1444,6 +1508,7 @@ function buildPartTabs(){
 function filterPart(classId,btn){
   document.querySelectorAll('#partTabs .ctab').forEach(function(b){b.classList.remove('active');});
   if(btn)btn.classList.add('active');
+  if(classId&&classId!=='all') activeClassId=classId;
   loadPart(classId);
 }
 
@@ -1453,10 +1518,23 @@ async function loadPart(classId){
     el.innerHTML='<div class="card"><div class="cb" style="color:var(--g400);text-align:center;padding:32px">Select a class to view participation data.</div></div>';
     return;
   }
+  // Use cache if available
+  if(allSchedules[classId] && window._partCache && window._partCache[classId]){
+    renderPart(classId, window._partCache[classId]);
+    return;
+  }
   el.innerHTML='<p style="padding:30px;text-align:center;color:var(--g400)">Loading…</p>';
   try{
-    var r=await api('getRewards',{classId:classId});
+    var promises=[];
+    if(!allSchedules[classId]) promises.push(api('getClassDetail',{classId:classId}));
+    else promises.push(Promise.resolve(null));
+    promises.push(api('getRewards',{classId:classId}));
+    var results=await Promise.all(promises);
+    if(results[0]&&results[0].success) allSchedules[classId]=results[0].schedule||[];
+    var r=results[1];
     if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
+    if(!window._partCache) window._partCache={};
+    window._partCache[classId]=r.months||[];
     renderPart(classId,r.months||[]);
   }catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>';}
 }
@@ -1465,46 +1543,59 @@ function renderPart(classId,months){
   var el=document.getElementById('partContent');
   if(!months.length){el.innerHTML='<div class="card"><div class="cb" style="color:var(--g400);text-align:center;padding:32px">No data yet.</div></div>';return;}
 
-  var html=months.map(function(mo){
-    var sorted=[].concat(mo.students).sort(function(a,b){return b.avgScore-a.avgScore;});
-    var topScore=sorted[0]?sorted[0].avgScore:0;
-    var sessions=mo.dates||[];
+  // Get all scheduled non-Day0 session dates
+  var schedDates=(allSchedules[classId]||[])
+    .filter(function(s){return s.date&&s.dayLabel.toLowerCase().replace(/ /g,'').replace('day','')!=='0';})
+    .map(function(s){return s.date;});
 
-    var sessionHeaders=sessions.map(function(d,i){
-      return '<th style="padding:6px 4px;text-align:center;font-size:9px;min-width:38px;background:var(--g100)">'+
-        '<div style="font-weight:700;color:var(--g600)">S'+(i+1)+'</div>'+
-        '<div style="color:var(--g400)">'+d.slice(5).replace('-','/')+'</div></th>';
-    }).join('');
+  var html=months.map(function(mo){
+    var topScore=0;
+    mo.students.forEach(function(s){if((s.avgScore||0)>topScore)topScore=s.avgScore||0;});
+
+    // Always 8 session columns for this month
+    var moStart=(mo.month-1)*8;
+    var moDates=schedDates.slice(moStart,moStart+8);
+
+    // Build session sub-headers (always 8)
+    var sessionHeaders='';
+    for(var si=0;si<8;si++){
+      var d=moDates[si]||'';
+      var dlabel=d?d.slice(5).replace('-','/'):'-';
+      sessionHeaders+='<th style="padding:5px 3px;text-align:center;font-size:9px;min-width:38px;background:var(--g100)">'+
+        '<div style="font-weight:700;color:var(--g600)">S'+(si+1)+'</div>'+
+        '<div style="color:var(--g400)">'+dlabel+'</div></th>';
+    }
 
     var rows=mo.students.map(function(s){
-      // Sessions: we only have average from GAS getRewards, not per-session breakdown
-      // Show avg in a summary cell, per-session shown as dashes (data not available without extra API)
-      var sessCells=sessions.map(function(){
-        return '<td style="padding:5px 4px;text-align:center;border-bottom:1px solid var(--g100)">'+
-          '<div style="width:32px;height:32px;border-radius:6px;background:var(--g100);margin:auto;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--g400)">—</div></td>';
-      }).join('');
+      var sessCells='';
+      for(var si=0;si<8;si++){
+        var d=moDates[si]||'';
+        sessCells+='<td style="padding:4px 3px;text-align:center;border-bottom:1px solid var(--g100)">'+
+          '<div style="width:32px;height:32px;border-radius:6px;background:var(--g100);margin:auto;'+
+          'display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;'+
+          'color:'+(d?'var(--g600)':'var(--g200)')+'">'+(d?'—':'')+'</div></td>';
+      }
       var isTop=s.avgScore>0&&s.avgScore===topScore;
       return '<tr>'+
-        '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:140px">'+
+        '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:150px">'+
           '<div style="font-size:13px;font-weight:600">'+s.name+'</div>'+
         '</td>'+
         sessCells+
-        '<td style="padding:8px 13px;text-align:center;border-bottom:1px solid var(--g100);font-weight:800;font-family:var(--serif);font-size:16px;color:'+(s.avgScore>0?'var(--red)':'var(--g300)')+'">'+
+        '<td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--g100);font-weight:800;font-family:var(--serif);font-size:15px;color:'+(s.avgScore>0?'var(--red)':'var(--g300)')+'">'+
           (s.avgScore>0?s.avgScore:'—')+'</td>'+
         '<td style="padding:8px 10px;border-bottom:1px solid var(--g100)">'+
-          (isTop?'<span class="badge bstar" style="font-size:12px">⭐ Top</span>':'')+'</td>'+
+          (isTop?'<span class="badge bstar">⭐ Top</span>':'')+'</td>'+
       '</tr>';
     }).join('');
 
-    return '<div class="card">'+
-      '<div class="ch"><div class="ct">Month '+mo.month+'</div>'+
-      '<span style="font-size:12px;color:var(--g400)">'+sessions.length+' sessions · Điểm nhập qua End Session → Participation</span></div>'+
+    return '<div class="card" style="margin-bottom:16px">'+
+      '<div style="padding:8px 18px 0;font-size:11px;font-weight:700;color:var(--g600);letter-spacing:.5px;text-transform:uppercase;opacity:.65">Month '+mo.month+'</div>'+
       '<div class="tw"><table style="border-collapse:collapse;font-size:12px">'+
         '<thead><tr>'+
-          '<th style="padding:8px 13px;background:var(--g900);color:white;position:sticky;left:0;z-index:2;min-width:140px">Student</th>'+
+          '<th style="padding:8px 13px;background:var(--g900);color:white;position:sticky;left:0;z-index:2;min-width:150px">Student</th>'+
           sessionHeaders+
-          '<th style="padding:8px 13px;background:var(--g900);color:white;min-width:55px;text-align:center">Avg</th>'+
-          '<th style="padding:8px 13px;background:var(--g900);color:white;min-width:60px">Award</th>'+
+          '<th style="padding:8px 10px;background:var(--g900);color:white;min-width:50px;text-align:center">Avg</th>'+
+          '<th style="padding:8px 10px;background:var(--g900);color:white;min-width:65px">Award</th>'+
         '</tr></thead>'+
         '<tbody>'+rows+'</tbody>'+
       '</table></div></div>';
@@ -1529,6 +1620,7 @@ function buildDiligenceTabs(){
 function filterDiligence(classId,btn){
   document.querySelectorAll('#diligenceTabs .ctab').forEach(function(b){b.classList.remove('active');});
   if(btn)btn.classList.add('active');
+  if(classId&&classId!=='all') activeClassId=classId;
   loadDiligence(classId);
 }
 
