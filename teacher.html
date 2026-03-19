@@ -966,6 +966,7 @@ function renderTuitionGrid(classId){
   }
 
   // ── Header row 2: Session numbers + dates + Remove All button
+  var today = new Date().toISOString().split('T')[0];
   var sessHeaders='<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;box-shadow:2px 0 8px rgba(0,0,0,.15)"></th>';
   for(var mo2=1;mo2<=maxMonths;mo2++){
     var bg2=mo2%2===0?'#eae8e4':'#f5f4f2';
@@ -973,10 +974,15 @@ function renderTuitionGrid(classId){
       var gIdx=(mo2-1)*8+(si-1);
       var sd=schedDates[gIdx]||'';
       var dl=sd?sd.split('-').slice(1).reverse().join('/'):'';
-      sessHeaders+='<th style="padding:3px 1px;text-align:center;background:'+bg2+';font-size:9px;color:var(--g400);width:34px;min-width:34px">'+
-        '<div style="font-weight:700;color:var(--g600)">'+si+'</div>'+
-        '<div style="font-size:8px;white-space:nowrap">'+dl+'</div>'+
-        (sd?'<button onclick="removeAllAtt(\''+classId+'\',\''+sd+'\')" title="Remove all attendance for this session" '+
+      var isToday=sd===today;
+      var colStyle=isToday
+        ?'background:#fff3cd;border-bottom:3px solid #f59e0b;'
+        :'background:'+bg2+';';
+      sessHeaders+='<th style="padding:3px 1px;text-align:center;font-size:9px;color:var(--g400);width:34px;min-width:34px;'+colStyle+'">'+
+        (isToday?'<div style="font-size:8px;font-weight:800;color:#92400e;letter-spacing:.3px">TODAY</div>':'')+
+        '<div style="font-weight:700;color:'+(isToday?'#92400e':'var(--g600)')+'">'+si+'</div>'+
+        '<div style="font-size:8px;white-space:nowrap;color:'+(isToday?'#b45309':'')+'">'+dl+'</div>'+
+        (sd?'<button onclick="removeAllAtt(\''+classId+'\',\''+sd+'\')" title="Remove all for this session" '+
           'style="margin-top:2px;padding:1px 3px;border:none;background:#fee2e2;color:#991b1b;border-radius:3px;font-size:8px;cursor:pointer;line-height:1.2;width:28px">✕All</button>':'')+
       '</th>';
     }
@@ -998,20 +1004,32 @@ function renderTuitionGrid(classId){
         // - If sessDate exists but not yet attended → grey ☑ (future/unrecorded), clickable
         // - No sessDate → no session scheduled
         var hasSession = !!sessDate;
-        var dotClass, dotTitle;
-        if(hasSession && s.sessDetail && s.sessDetail[sessDate]){
-          // Real attendance record exists for this date
-          var attStatus = s.sessDetail[sessDate].status;
-          if(attStatus==='Late'){dotClass='adot adot-late';dotTitle='Late — '+sessDate;}
-          else if(attStatus==='Absent'){dotClass='adot adot-absent';dotTitle='Absent — '+sessDate;}
-          else{dotClass='adot adot-present';dotTitle='Present — '+sessDate;}
-        } else if(hasSession){
-          dotClass='adot adot-unset';dotTitle=sessDate+' — click to mark';
+        var isToday2 = sessDate===today;
+        var cellBg=isToday2?'background:#fffbeb;':'';
+        if(!hasSession){
+          // No session scheduled — empty grey square
+          cells+='<td style="padding:3px 2px;text-align:center;'+cellBg+'" id="'+dotId+'">'+
+            '<div class="adot adot-empty" style="cursor:default"></div></td>';
         } else {
-          dotClass='adot adot-empty';dotTitle='';
+          // Has session — render inline select dropdown
+          var curStatus = (s.sessDetail && s.sessDetail[sessDate]) ? s.sessDetail[sessDate].status : '';
+          var selBg = curStatus==='Present'?'#16a34a':curStatus==='Late'?'#d97706':curStatus==='Absent'?'#dc2626':'#d1d0cc';
+          var selColor = curStatus?'white':'#5c5a56';
+          var emailKey = s.email.replace(/[@.]/g,'_');
+          cells+='<td style="padding:2px 1px;text-align:center;'+cellBg+'" id="'+dotId+'">'+
+            '<select data-cid="'+classId+'" data-email="'+s.email+'" data-date="'+sessDate+'" '+
+              'onchange="quickMarkAtt(this)" '+
+              'style="width:30px;height:28px;border:none;border-radius:5px;cursor:pointer;'+
+                'background:'+selBg+';color:'+selColor+';font-size:11px;font-weight:700;'+
+                'text-align:center;appearance:none;-webkit-appearance:none;padding:0;" '+
+              'title="'+sessDate+'">'+
+              '<option value="" style="background:white;color:#333"'+(curStatus===''?' selected':'')+'>—</option>'+
+              '<option value="Present" style="background:white;color:#333"'+(curStatus==='Present'?' selected':'')+'>P</option>'+
+              '<option value="Late" style="background:white;color:#333"'+(curStatus==='Late'?' selected':'')+'>L</option>'+
+              '<option value="Absent" style="background:white;color:#333"'+(curStatus==='Absent'?' selected':'')+'>A</option>'+
+              '<option value="Remove" style="background:white;color:#991b1b">✕</option>'+
+            '</select></td>';
         }
-        cells+='<td style="padding:3px 2px;text-align:center" id="'+dotId+'">'+
-          '<div class="'+dotClass+'" title="'+dotTitle+'"'+(hasSession?'':' style="cursor:default"')+'></div></td>';
       }
       var paidCellId='pc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+(mo3+1);
       cells+='<td style="padding:3px 6px;border-right:2px solid var(--g200);border-left:1px solid var(--g200);background:#f0fdf4;min-width:100px" id="'+paidCellId+'"></td>';
@@ -1027,19 +1045,9 @@ function renderTuitionGrid(classId){
     '<thead><tr>'+monthHeaders+'</tr><tr>'+sessHeaders+'</tr></thead>'+
     '<tbody>'+rows+'</tbody></table></div>';
 
-  // Wire events
+  // Wire paid cells only (attendance now handled by inline select)
   students.forEach(function(s){
-    var sessInAll=s.monthsCompleted*8+s.sessInCycle;
     for(var mo=0;mo<maxMonths;mo++){
-      for(var si=0;si<8;si++){
-        var gIdx=mo*8+si;
-        var dotCell=document.getElementById('dot-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+gIdx);
-        if(!dotCell)continue;
-        var sd=schedDates[gIdx]||'';
-        if(sd)(function(cell,cid,email,date){
-          cell.querySelector('.adot').onclick=function(){showAttPopup(cell,cid,email,date);};
-        })(dotCell,classId,s.email,sd);
-      }
       var moNo=String(mo+1);
       var cellId='pc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+moNo;
       var cell=document.getElementById(cellId);
@@ -1050,60 +1058,45 @@ function renderTuitionGrid(classId){
   });
 }
 
-function showAttPopup(cell,classId,email,date){
-  var existing=document.getElementById('attPopup'); if(existing)existing.remove();
-  var popup=document.createElement('div');
-  popup.id='attPopup';
-  popup.style='position:fixed;z-index:9999;background:white;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.2);padding:12px;display:flex;flex-direction:column;gap:5px;min-width:155px;';
-  var title=document.createElement('div');
-  title.style='font-size:11px;font-weight:700;color:var(--g600);margin-bottom:5px;border-bottom:1px solid var(--g100);padding-bottom:6px;';
-  var dp=date.split('-'); title.textContent=dp[2]+'/'+dp[1]+'/'+dp[0];
-  popup.appendChild(title);
-  [['Present','#16a34a','🟩'],['Late','#d97706','🟨'],['Absent','#dc2626','🟥'],['Remove','#9d9b96','✕']].forEach(function(opt){
-    var btn=document.createElement('button');
-    btn.style='padding:6px 10px;border:none;border-radius:6px;background:'+opt[1]+'18;color:'+opt[1]+';font-size:12px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:7px;width:100%;';
-    btn.innerHTML='<span>'+opt[2]+'</span><span>'+opt[0]+'</span>';
-    btn.onmouseenter=function(){this.style.background=opt[1]+'30';};
-    btn.onmouseleave=function(){this.style.background=opt[1]+'18';};
-    btn.onclick=(function(action){return function(){
-      popup.remove();
-      if(action==='Remove'){
-        api('deleteAttRecord',{studentEmail:email,sessionDate:date})
-          .then(function(r){
-            if(r.success){
-              toast('Removed ✓','ok');
-              var dotDiv=cell.querySelector('.adot');
-              if(dotDiv){dotDiv.className='adot adot-unset';dotDiv.title=date+' — click to mark';}
-              delete tuitionCache[classId]; delete tuitionCache[classId+'_totalMonths'];
-              loadTuition(classId, true);
-            } else toast('Error: '+r.message,'err');
-          }).catch(function(){toast('Connection error','err');});
-      } else {
-        var sessInfo=(allSchedules[classId]||[]).find(function(s){return s.date===date;});
-        api('updateAttendance',{classId:classId,studentEmail:email,sessionDate:date,status:action,dayLabel:sessInfo?sessInfo.dayLabel:''})
-          .then(function(r){
-            toast(action+' saved ✓','ok');
-            var dotDiv=cell.querySelector('.adot');
-            if(dotDiv){
-              var nc=action==='Present'?'adot-present':action==='Late'?'adot-late':'adot-absent';
-              dotDiv.className='adot '+nc; dotDiv.title=action;
-            }
-            delete tuitionCache[classId]; delete tuitionCache[classId+'_totalMonths'];
-            loadTuition(classId, true);
-          }).catch(function(){toast('Connection error','err');});
-      }
-    };})(opt[0]);
-    popup.appendChild(btn);
-  });
-  var rect=cell.getBoundingClientRect();
-  popup.style.top=Math.min(rect.bottom+6,window.innerHeight-200)+'px';
-  popup.style.left=Math.max(rect.left-20,8)+'px';
-  document.body.appendChild(popup);
-  setTimeout(function(){
-    document.addEventListener('click',function handler(e){
-      if(!popup.contains(e.target)){popup.remove();document.removeEventListener('click',handler);}
-    });
-  },10);
+// ── Inline attendance dropdown handler (optimistic update)
+function quickMarkAtt(sel){
+  var classId=sel.dataset.cid;
+  var email=sel.dataset.email;
+  var date=sel.dataset.date;
+  var action=sel.value;
+  if(!action) return; // no-op for blank "—" option after Remove
+
+  // 1. Update UI immediately (optimistic)
+  var statusColors={Present:'#16a34a',Late:'#d97706',Absent:'#dc2626'};
+  if(action==='Remove'){
+    sel.style.background='#d1d0cc'; sel.style.color='#5c5a56';
+    sel.value=''; // reset to blank
+  } else {
+    sel.style.background=statusColors[action]||'#d1d0cc';
+    sel.style.color='white';
+  }
+
+  // 2. Update local sessDetail cache instantly
+  var cachedStudents=tuitionCache[classId]||[];
+  var cs=cachedStudents.find(function(s){return s.email===email;});
+  if(cs){
+    if(!cs.sessDetail) cs.sessDetail={};
+    if(action==='Remove') delete cs.sessDetail[date];
+    else cs.sessDetail[date]={status:action,score:0};
+  }
+
+  // 3. Save to GAS in background — no await, no reload
+  if(action==='Remove'){
+    api('deleteAttRecord',{studentEmail:email,sessionDate:date})
+      .then(function(r){ if(!r.success) toast('Save error: '+r.message,'err'); })
+      .catch(function(){ toast('Connection error','err'); });
+  } else {
+    var sessInfo=(allSchedules[classId]||[]).find(function(s){return s.date===date;});
+    api('updateAttendance',{classId:classId,studentEmail:email,sessionDate:date,
+      status:action,dayLabel:sessInfo?sessInfo.dayLabel:''})
+      .then(function(r){ if(!r.success) toast('Save error: '+r.message,'err'); })
+      .catch(function(){ toast('Connection error','err'); });
+  }
 }
 
 async function removeAllAtt(classId, sessionDate){
@@ -1329,9 +1322,20 @@ async function doFinish(){
       if(scorePromises.length) await Promise.all(scorePromises);
       toast('Session saved! ✓','ok');
       closeMo('moFinish');
-      if(hwTrackerCache[classId])delete hwTrackerCache[classId];
-      classData=[]; allSchedules={}; tuitionCache={};
+      // Clear ALL caches so fresh data is fetched
+      if(hwTrackerCache[classId]) delete hwTrackerCache[classId];
+      delete tuitionCache[classId];
+      delete tuitionCache[classId+'_totalMonths'];
+      classData=[]; allSchedules={};
       await init();
+      // Navigate to Tuition tab and show the saved class immediately
+      showSec('tuition');
+      // Activate the correct class tab
+      document.querySelectorAll('#tuitionTabs .ctab').forEach(function(b){
+        b.classList.remove('active');
+        if(b.textContent===classId) b.classList.add('active');
+      });
+      await loadTuition(classId, true);
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
 }
