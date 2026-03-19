@@ -903,8 +903,8 @@ async function loadTuition(classId){
     return;
   }
 
-  // ── Use cache if available (instant render)
-  if(tuitionCache[classId] && allSchedules[classId]){
+  // ── Use cache if available (instant render) — skip if forceRefresh
+  if(!arguments[1] && tuitionCache[classId] && allSchedules[classId]){
     renderTuitionGrid(classId);
     return;
   }
@@ -1058,11 +1058,10 @@ function showAttPopup(cell,classId,email,date){
           .then(function(r){
             if(r.success){
               toast('Removed ✓','ok');
-              // Update dot immediately without full reload
               var dotDiv=cell.querySelector('.adot');
               if(dotDiv){dotDiv.className='adot adot-unset';dotDiv.title=date+' — click to mark';}
               delete tuitionCache[classId]; delete tuitionCache[classId+'_totalMonths'];
-              loadTuition(classId);
+              loadTuition(classId, true);
             } else toast('Error: '+r.message,'err');
           }).catch(function(){toast('Connection error','err');});
       } else {
@@ -1070,14 +1069,13 @@ function showAttPopup(cell,classId,email,date){
         api('updateAttendance',{classId:classId,studentEmail:email,sessionDate:date,status:action,dayLabel:sessInfo?sessInfo.dayLabel:''})
           .then(function(r){
             toast(action+' saved ✓','ok');
-            // Update dot immediately
             var dotDiv=cell.querySelector('.adot');
             if(dotDiv){
               var nc=action==='Present'?'adot-present':action==='Late'?'adot-late':'adot-absent';
               dotDiv.className='adot '+nc; dotDiv.title=action;
             }
             delete tuitionCache[classId]; delete tuitionCache[classId+'_totalMonths'];
-            loadTuition(classId);
+            loadTuition(classId, true);
           }).catch(function(){toast('Connection error','err');});
       }
     };})(opt[0]);
@@ -1114,12 +1112,11 @@ async function removeAllAtt(classId, sessionDate){
   if(count>0){
     toast('Removed '+count+' record(s) ✓','ok');
   } else {
-    // Likely no records existed for this date yet
     toast('No records found for '+sessionDate+' (0 removed)','');
   }
   delete tuitionCache[classId];
   delete tuitionCache[classId+'_totalMonths'];
-  await loadTuition(classId);
+  await loadTuition(classId, true); // force fresh fetch
 }
 
 function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
