@@ -1097,26 +1097,47 @@ async function removeAllAtt(classId, sessionDate){
   var cls=classData.find(function(c){return c.classId===classId;});
   var students=cls?cls.students:[];
   if(!students.length){ toast('No students found for '+classId,'err'); return; }
-  toast('Removing '+students.length+' records…','');
+
+  toast('Checking records…','');
+
+  // Step 1: fetch actual records from first student to discover real date format in sheet
+  // GAS resetAttendance returns records with actual stored dates
+  var realDate = sessionDate; // fallback
+  try{
+    var probe = await api('resetAttendance',{studentEmail:students[0].email, classId:classId});
+    if(probe.success && probe.records && probe.records.length){
+      // Find a record whose date matches our sessionDate in any format
+      var found = probe.records.find(function(r){
+        return r.date === sessionDate ||
+               r.date === sessionDate.split('-').reverse().join('-') ||
+               r.date === sessionDate.replace(/-/g,'/');
+      });
+      if(found) realDate = found.date;
+      // Also log all dates so we can see what format GAS uses
+      console.log('[RemoveAll] GAS stored dates:', probe.records.map(function(r){return r.date;}).join(', '));
+      console.log('[RemoveAll] Looking for:', sessionDate, '| Using:', realDate);
+    }
+  }catch(e){ console.log('[RemoveAll] probe failed', e); }
+
+  toast('Removing '+students.length+' records for '+realDate+'…','');
   var count=0, errors=0;
   for(var i=0;i<students.length;i++){
     try{
-      var r=await api('deleteAttRecord',{studentEmail:students[i].email,sessionDate:sessionDate});
-      Logger && Logger.log && Logger.log(r);
-      if(r.success){
-        if(r.deleted>0) count++;
-        // deleted===0 means no record existed for this student on this date — that's OK
-      } else { errors++; }
+      var r=await api('deleteAttRecord',{studentEmail:students[i].email, sessionDate:realDate});
+      console.log('[RemoveAll]', students[i].email, realDate, '→', JSON.stringify(r));
+      if(r.success){ if(r.deleted>0) count++; }
+      else errors++;
     }catch(e){ errors++; }
   }
+
   if(count>0){
     toast('Removed '+count+' record(s) ✓','ok');
   } else {
-    toast('No records found for '+sessionDate+' (0 removed)','');
+    toast('Still 0 removed. Date used: '+realDate+' — check console (F12)','err');
   }
   delete tuitionCache[classId];
   delete tuitionCache[classId+'_totalMonths'];
-  await loadTuition(classId, true); // force fresh fetch
+  await loadTuition(classId, true);
 }
 
 function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
