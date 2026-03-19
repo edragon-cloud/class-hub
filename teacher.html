@@ -356,10 +356,8 @@ textarea.fc{resize:vertical;min-height:60px;}
     <div id="sec-homework" class="sec">
       <div class="sec-hd">
         <div><div class="sec-title">Homework Tracker</div>
-        <div class="sec-sub">Assign homework · Track submissions per student per session</div></div>
-        <button class="btn btn-r" onclick="openHWFor(null)">+ Assign Homework</button>
+        <div class="sec-sub">Theo dõi nộp bài theo tháng · Assign homework qua End Session</div></div>
       </div>
-      <!-- Sub-tabs: Assignment + per-class tracking -->
       <div class="ctabs" id="hwTrackerTabs"><button class="ctab active">Select a class</button></div>
       <div id="hwTrackerContent">
         <p style="padding:40px;text-align:center;color:var(--g400)">Select a class above to view homework submissions.</p>
@@ -463,7 +461,8 @@ textarea.fc{resize:vertical;min-height:60px;}
 
     <div class="step-tabs">
       <div class="step-tab active" onclick="switchStep(0,this)">① Attendance</div>
-      <div class="step-tab" onclick="switchStep(1,this)">② Homework</div>
+      <div class="step-tab" onclick="switchStep(1,this)">② Participation</div>
+      <div class="step-tab" onclick="switchStep(2,this)">③ Homework</div>
     </div>
 
     <!-- Step 1: Attendance -->
@@ -483,22 +482,30 @@ textarea.fc{resize:vertical;min-height:60px;}
       <div id="moAttList" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;margin-bottom:16px"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button class="btn btn-g" onclick="closeMo('moFinish')">Cancel</button>
-        <button class="btn btn-o" onclick="switchStep(1,document.querySelector('.step-tab:nth-child(2)'))">Next: Homework →</button>
+        <button class="btn btn-o" onclick="switchStep(1,document.querySelectorAll('.step-tab')[1])">Next: Participation →</button>
       </div>
     </div>
 
-    <!-- Step 2: Homework -->
+    <!-- Step 2: Participation -->
     <div class="step-panel" id="step1">
+      <div style="font-size:12px;color:var(--g600);margin-bottom:10px">Nhập số lần phát biểu của từng sinh viên trong buổi học này (0–10).</div>
+      <div id="moPartList" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;margin-bottom:16px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-g" onclick="switchStep(0,document.querySelectorAll('.step-tab')[0])">← Back</button>
+        <button class="btn btn-o" onclick="switchStep(2,document.querySelectorAll('.step-tab')[2])">Next: Homework →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Homework -->
+    <div class="step-panel" id="step2">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:12px;font-weight:600;color:var(--g600)">Homework Assignments</div>
         <button class="btn btn-g btn-sm" onclick="addHWEntry()">+ Add</button>
       </div>
-      <div id="hwEntries" style="margin-bottom:14px">
-        <!-- default one entry -->
-      </div>
+      <div id="hwEntries" style="margin-bottom:14px"></div>
       <div style="font-size:11px;color:var(--g400);margin-bottom:12px">💡 Leave blank to skip homework for this session.</div>
       <div class="md-act">
-        <button class="btn btn-g" onclick="switchStep(0,document.querySelector('.step-tab:first-child'))">← Back</button>
+        <button class="btn btn-g" onclick="switchStep(1,document.querySelectorAll('.step-tab')[1])">← Back</button>
         <div style="flex:1"></div>
         <button class="btn btn-g" onclick="closeMo('moFinish')">Cancel</button>
         <button class="btn btn-r" onclick="doFinish()">✅ Finish Session</button>
@@ -922,22 +929,39 @@ function renderTuitionGrid(classId){
   }
 
   // ── Rows
+  // GAS getTuitionForClass returns: total, monthsCompleted, sessInCycle, monthPayments
+  // It does NOT return per-session attendance detail — we infer dot state from total count
   var rows=students.map(function(s){
+    var totalAttended = s.total || 0; // total non-Day0 sessions attended
     var cells='';
     for(var mo3=0;mo3<maxMonths;mo3++){
       for(var si2=0;si2<8;si2++){
         var gIdx2=mo3*8+si2;
         var sessDate=schedDates[gIdx2]||'';
         var dotId='dot-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+gIdx2;
-        var attStatus=sessDate&&s.sessDetail?s.sessDetail[sessDate]?s.sessDetail[sessDate].status:null:null;
-        var dotBg,dotIcon,dotTitle;
-        if(attStatus==='Present'){dotBg='#16a34a';dotIcon='☑';dotTitle='Present';}
-        else if(attStatus==='Late'){dotBg='#d97706';dotIcon='⏲';dotTitle='Late';}
-        else if(attStatus==='Absent'){dotBg='#dc2626';dotIcon='✗';dotTitle='Absent';}
-        else if(sessDate){dotBg='var(--g100)';dotIcon='☑';dotTitle=sessDate+' – click to mark';}
-        else{dotBg='var(--g200)';dotIcon='';dotTitle='No session';}
+        // Determine dot state:
+        // - If gIdx2 < totalAttended → student has attended this session (show green ☑, clickable to change)
+        // - If sessDate exists but not yet attended → grey ☑ (future/unrecorded), clickable
+        // - No sessDate → no session scheduled
+        var hasSession = !!sessDate;
+        var attended = gIdx2 < totalAttended;
+        var dotBg, dotIcon, dotColor;
+        if(attended){
+          // Default to Present (green); actual per-session status needs att detail
+          // Use sessDetail if available (loaded via getClassDetail), else assume Present
+          var attDetail = s.sessDetail ? s.sessDetail[sessDate] : null;
+          var attStatus = attDetail ? attDetail.status : 'Present';
+          if(attStatus==='Late'){dotBg='#d97706';dotIcon='⏲';dotColor='white';}
+          else if(attStatus==='Absent'){dotBg='#dc2626';dotIcon='✗';dotColor='white';}
+          else{dotBg='#16a34a';dotIcon='☑';dotColor='white';}
+        } else if(hasSession){
+          dotBg='var(--g200)';dotIcon='☑';dotColor='var(--g400)';
+        } else {
+          dotBg='var(--g100)';dotIcon='';dotColor='var(--g300)';
+        }
+        var title=sessDate?sessDate+(attended?' (attended)':' (not yet)'):'-';
         cells+='<td style="padding:2px 1px;text-align:center" id="'+dotId+'">'+
-          '<div class="adot" style="background:'+dotBg+';color:'+(attStatus?'white':'var(--g300)')+';'+(sessDate?'cursor:pointer':'')+'" title="'+dotTitle+'">'+dotIcon+'</div></td>';
+          '<div class="adot" style="background:'+dotBg+';color:'+dotColor+';'+(hasSession?'cursor:pointer':'')+'" title="'+title+'">'+dotIcon+'</div></td>';
       }
       var paidCellId='pc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+(mo3+1);
       cells+='<td style="padding:3px 6px;border-right:2px solid var(--g200);border-left:1px solid var(--g200);background:#f0fdf4;min-width:100px" id="'+paidCellId+'"></td>';
@@ -1113,6 +1137,18 @@ function openFinishFor(classId) {
         '<option value="Absent">✗ Absent</option>'+
       '</select></div>';
   }).join('');
+  // Populate participation list (step 2)
+  document.getElementById('moPartList').innerHTML=students.map(function(s){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--g50);border-radius:7px;border:1px solid var(--g100)">'+
+      '<div><div style="font-size:13px;font-weight:600">'+s.name+'</div>'+
+      '<div style="font-size:10px;color:var(--g400)">'+(s.studentId||'')+'</div></div>'+
+      '<div style="display:flex;align-items:center;gap:6px">'+
+        '<span style="font-size:11px;color:var(--g400)">Lần PB:</span>'+
+        '<input type="number" min="0" value="0" id="part-'+s.email.replace(/[@.]/g,'_')+'" '+
+          'style="width:52px;padding:4px 7px;border:1.5px solid var(--g200);border-radius:6px;font-size:13px;font-weight:600;text-align:center;outline:none;" '+
+          'onfocus="this.style.borderColor=\'var(--red)\'" onblur="this.style.borderColor=\'var(--g200)\'"/>'+
+      '</div></div>';
+  }).join('');
   document.getElementById('moFinish').classList.add('show');
 }
 
@@ -1161,9 +1197,17 @@ async function doFinish(){
   try{
     var r=await api('finishSession',{classId:classId,date:date,dayLabel:dayLabel,homework:homework,attOverrides:attOverrides});
     if(r.success){
+      // Save participation scores
+      var scorePromises=[];
+      students.forEach(function(s){
+        var inp=document.getElementById('part-'+s.email.replace(/[@.]/g,'_'));
+        if(inp&&Number(inp.value)>0){
+          scorePromises.push(api('updateScore',{classId:classId,studentEmail:s.email,sessionDate:date,score:Number(inp.value)}));
+        }
+      });
+      if(scorePromises.length) await Promise.all(scorePromises);
       toast('Session saved! ✓','ok');
       closeMo('moFinish');
-      // Sync to HW tracker cache
       if(hwTrackerCache[classId])delete hwTrackerCache[classId];
       classData=[]; allSchedules={}; tuitionCache={};
       await init();
@@ -1245,8 +1289,7 @@ function renderHWTracker(classId){
     el.innerHTML='<div class="card"><div style="padding:40px;text-align:center;color:var(--g400)">'+
       '<div style="font-size:32px;margin-bottom:8px">📝</div>'+
       '<div style="font-weight:600;margin-bottom:4px">No homework assigned yet</div>'+
-      '<div style="font-size:12px">Use "Assign Homework" or "End Session" to create assignments.</div>'+
-      '<button class="btn btn-r" style="margin-top:14px" onclick="openHWFor(\''+classId+'\')">+ Assign Homework</button>'+
+      '<div style="font-size:12px">Assign homework via End Session (Step ③ Homework).</div>'+
     '</div></div>';
     return;
   }
@@ -1260,60 +1303,88 @@ function renderHWTracker(classId){
     Undone:{bg:'#fee2e2',color:'#991b1b',icon:'✗'},
   };
 
-  // Group HW by month (8 per month based on dayLabel index)
-  // We'll group by session month index derived from order
-  var hwHeaders=hwList.map(function(hw){
-    var col=typeColors[hw.type]||'#6b7280';
-    var tname=typeNames[hw.type]||hw.type;
-    return '<th style="padding:8px 6px;text-align:center;min-width:95px;background:'+col+'18;border-bottom:2px solid '+col+'">'+
-      '<div style="font-size:10px;font-weight:700;color:'+col+'">'+tname+'</div>'+
-      '<div style="font-size:10px;font-weight:600;color:var(--g900);margin:2px 0">'+hw.dayLabel+'</div>'+
-      '<div style="font-size:9px;color:var(--g400)">Due: '+hw.deadline+'</div>'+
-    '</th>';
-  }).join('');
+  // Group homework into months of 8
+  var months=[];
+  for(var i=0;i<hwList.length;i+=8){
+    months.push({month:Math.floor(i/8)+1, hw:hwList.slice(i,i+8)});
+  }
 
-  var summaryRow=hwList.map(function(hw){
-    var done=students.filter(function(s){return s.submissions[hw.hwId]&&s.submissions[hw.hwId].status==='Done';}).length;
-    var total=students.length;
-    var pct=total>0?Math.round(done/total*100):0;
-    return '<td style="padding:6px;text-align:center;background:var(--g100)">'+
-      '<div style="font-size:11px;font-weight:700;color:'+(pct>=80?'#16a34a':pct>=50?'#d97706':'#dc2626')+'">'+done+'/'+total+'</div>'+
-      '<div style="font-size:9px;color:var(--g400)">'+pct+'%</div></td>';
-  }).join('');
+  // Build month header (colspan = num hw in month + 1 for summary)
+  var monthHeaders='<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;min-width:150px;box-shadow:2px 0 8px rgba(0,0,0,.1)"></th>';
+  months.forEach(function(mo){
+    var bg=mo.month%2===0?'#e8e6e2':'var(--g100)';
+    monthHeaders+='<th colspan="'+(mo.hw.length+1)+'" style="padding:7px 4px;text-align:center;background:'+bg+
+      ';border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700;color:var(--g600)">Month '+mo.month+'</th>';
+  });
 
+  // Build HW sub-headers
+  var hwHeaders='<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;box-shadow:2px 0 8px rgba(0,0,0,.1)"></th>';
+  months.forEach(function(mo){
+    var bg2=mo.month%2===0?'#eae8e4':'#f5f4f2';
+    mo.hw.forEach(function(hw,idx){
+      var col=typeColors[hw.type]||'#6b7280';
+      var tname=typeNames[hw.type]||hw.type;
+      hwHeaders+='<th style="padding:6px 4px;text-align:center;min-width:80px;background:'+bg2+';border-bottom:2px solid '+col+'">'+
+        '<div style="font-size:9px;font-weight:700;color:'+col+'">'+tname+'</div>'+
+        '<div style="font-size:9px;font-weight:600;color:var(--g900)">HW '+(idx+1)+'</div>'+
+        '<div style="font-size:8px;color:var(--g400)">Due: '+hw.deadline+'</div>'+
+      '</th>';
+    });
+    // Summary column per month
+    hwHeaders+='<th style="padding:6px 4px;text-align:center;min-width:55px;background:#f0fdf4;border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:9px;font-weight:700;color:#166534">Done</th>';
+  });
+
+  // Summary rate row
+  var rateRow='<td style="padding:6px 13px;background:var(--g100);font-size:11px;font-weight:700;color:var(--g600);position:sticky;left:0">Rate</td>';
+  months.forEach(function(mo){
+    mo.hw.forEach(function(hw){
+      var done=students.filter(function(s){return s.submissions[hw.hwId]&&s.submissions[hw.hwId].status==='Done';}).length;
+      var total=students.length;
+      var pct=total>0?Math.round(done/total*100):0;
+      rateRow+='<td style="padding:5px;text-align:center;background:var(--g100)">'+
+        '<div style="font-size:11px;font-weight:700;color:'+(pct>=80?'#16a34a':pct>=50?'#d97706':'#dc2626')+'">'+done+'/'+total+'</div>'+
+        '<div style="font-size:8px;color:var(--g400)">'+pct+'%</div></td>';
+    });
+    rateRow+='<td style="background:var(--g100);border-right:2px solid var(--g200);border-left:1px solid var(--g200)"></td>';
+  });
+
+  // Student rows
   var studentRows=students.map(function(s){
-    var hwCells=hwList.map(function(hw){
-      var cellId='hwc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+hw.hwId.replace(/[^a-zA-Z0-9]/g,'_');
-      return '<td style="padding:4px 5px;text-align:center" id="'+cellId+'"></td>';
-    }).join('');
-    var sumBg=s.summary.done===s.summary.total&&s.summary.total>0?'#dcfce7':s.summary.undone===s.summary.total?'#fee2e2':'#fef9c3';
+    var cells='';
+    months.forEach(function(mo){
+      var monthDone=0, monthTotal=mo.hw.length;
+      mo.hw.forEach(function(hw){
+        var sub=s.submissions[hw.hwId];
+        var status=sub?sub.status:'Undone';
+        if(status==='Done'||status==='Late')monthDone++;
+        var cellId='hwc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+hw.hwId.replace(/[^a-zA-Z0-9]/g,'_');
+        cells+='<td style="padding:3px 4px;text-align:center;border-bottom:1px solid var(--g100)" id="'+cellId+'"></td>';
+      });
+      // Month summary
+      var sumBg=monthDone===monthTotal&&monthTotal>0?'#dcfce7':monthDone===0?'#fee2e2':'#fef9c3';
+      cells+='<td style="padding:4px 6px;text-align:center;background:'+sumBg+';border-bottom:1px solid var(--g100);border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700">'+monthDone+'/'+monthTotal+'</td>';
+    });
     return '<tr>'+
-      '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:140px">'+
+      '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:150px">'+
         '<div style="font-size:13px;font-weight:700">'+s.name+'</div>'+
         (s.studentId?'<div style="font-size:10px;color:#1d4ed8;font-family:monospace">'+s.studentId+'</div>':'')+
-      '</td>'+hwCells+
-      '<td style="padding:4px 13px;background:'+sumBg+';border-left:2px solid var(--g200);min-width:75px;text-align:center">'+
-        '<div style="font-size:12px;font-weight:700">'+s.summary.done+'/'+s.summary.total+'</div>'+
-        '<div style="font-size:9px;color:var(--g600)">'+s.summary.late+'L · '+s.summary.partial+'P</div>'+
-      '</td></tr>';
+      '</td>'+cells+'</tr>';
   }).join('');
 
   el.innerHTML='<div class="card"><div class="ch">'+
-    '<div class="ct">'+classId+' — Homework</div>'+
-    '<button class="btn btn-r btn-sm" onclick="openHWFor(\''+classId+'\')">+ Assign</button>'+
+    '<div class="ct">'+classId+' — Homework Tracker</div>'+
+    '<span style="font-size:12px;color:var(--g400)">'+hwList.length+' assignments · '+months.length+' month(s)</span>'+
     '</div>'+
     '<div class="tw"><table style="border-collapse:collapse;font-size:12px">'+
-      '<thead><tr>'+
-        '<th style="padding:8px 13px;background:var(--g900);color:white;position:sticky;left:0;z-index:2">Student</th>'+
-        hwHeaders+
-        '<th style="padding:8px 13px;background:var(--g900);color:white;min-width:75px;border-left:2px solid rgba(255,255,255,.2)">Total</th>'+
-      '</tr>'+
-      '<tr><td style="padding:6px 13px;background:var(--g100);font-size:11px;font-weight:700;color:var(--g600);position:sticky;left:0">Rate</td>'+
-      summaryRow+
-      '<td style="background:var(--g100);border-left:2px solid var(--g200)"></td>'+
-      '</tr></thead><tbody>'+studentRows+'</tbody></table></div></div>';
+      '<thead>'+
+        '<tr>'+monthHeaders+'</tr>'+
+        '<tr>'+hwHeaders+'</tr>'+
+        '<tr>'+rateRow+'</tr>'+
+      '</thead>'+
+      '<tbody>'+studentRows+'</tbody>'+
+    '</table></div></div>';
 
-  // Wire cells
+  // Wire status dropdowns
   students.forEach(function(s){
     hwList.forEach(function(hw){
       var sub=s.submissions[hw.hwId];
@@ -1394,49 +1465,49 @@ function renderPart(classId,months){
   var el=document.getElementById('partContent');
   if(!months.length){el.innerHTML='<div class="card"><div class="cb" style="color:var(--g400);text-align:center;padding:32px">No data yet.</div></div>';return;}
 
-  var allStudents=months.length?months[0].students.map(function(s){return s.name;}):[];
-
   var html=months.map(function(mo){
-    // Sort by score desc
     var sorted=[].concat(mo.students).sort(function(a,b){return b.avgScore-a.avgScore;});
     var topScore=sorted[0]?sorted[0].avgScore:0;
+    var sessions=mo.dates||[];
 
-    var rows=mo.students.map(function(s){
-      var sessions=mo.dates||[];
-      return '<tr>'+
-        '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:130px">'+
-          '<div style="font-size:13px;font-weight:600">'+s.name+'</div>'+
-        '</td>'+
-        sessions.map(function(d,i){
-          // We only have avg — individual session scores not returned here
-          return '<td style="padding:6px 4px;text-align:center;border-bottom:1px solid var(--g100)">'+
-            '<div style="width:30px;height:30px;border-radius:6px;background:var(--g100);margin:auto;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--g600)">—</div></td>';
-        }).join('')+
-        '<td style="padding:8px 13px;text-align:center;border-bottom:1px solid var(--g100);font-weight:700;color:'+(s.avgScore>0?'var(--red)':'var(--g400)')+'">'+
-          (s.avgScore>0?s.avgScore+'/10':'—')+'</td>'+
-        '<td style="padding:8px 13px;border-bottom:1px solid var(--g100)">'+
-          (s.avgScore===topScore&&topScore>0?'<span class="badge bstar">⭐ Top</span>':'')+'</td>'+
-      '</tr>';
+    var sessionHeaders=sessions.map(function(d,i){
+      return '<th style="padding:6px 4px;text-align:center;font-size:9px;min-width:38px;background:var(--g100)">'+
+        '<div style="font-weight:700;color:var(--g600)">S'+(i+1)+'</div>'+
+        '<div style="color:var(--g400)">'+d.slice(5).replace('-','/')+'</div></th>';
     }).join('');
 
-    var sessionHeaders=(mo.dates||[]).map(function(d,i){
-      return '<th style="padding:6px 4px;text-align:center;font-size:9px;min-width:34px">'+
-        '<div style="font-weight:700">S'+(i+1)+'</div>'+
-        '<div style="color:var(--g400)">'+d.slice(5).replace('-','/')+'</div></th>';
+    var rows=mo.students.map(function(s){
+      // Sessions: we only have average from GAS getRewards, not per-session breakdown
+      // Show avg in a summary cell, per-session shown as dashes (data not available without extra API)
+      var sessCells=sessions.map(function(){
+        return '<td style="padding:5px 4px;text-align:center;border-bottom:1px solid var(--g100)">'+
+          '<div style="width:32px;height:32px;border-radius:6px;background:var(--g100);margin:auto;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--g400)">—</div></td>';
+      }).join('');
+      var isTop=s.avgScore>0&&s.avgScore===topScore;
+      return '<tr>'+
+        '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:140px">'+
+          '<div style="font-size:13px;font-weight:600">'+s.name+'</div>'+
+        '</td>'+
+        sessCells+
+        '<td style="padding:8px 13px;text-align:center;border-bottom:1px solid var(--g100);font-weight:800;font-family:var(--serif);font-size:16px;color:'+(s.avgScore>0?'var(--red)':'var(--g300)')+'">'+
+          (s.avgScore>0?s.avgScore:'—')+'</td>'+
+        '<td style="padding:8px 10px;border-bottom:1px solid var(--g100)">'+
+          (isTop?'<span class="badge bstar" style="font-size:12px">⭐ Top</span>':'')+'</td>'+
+      '</tr>';
     }).join('');
 
     return '<div class="card">'+
       '<div class="ch"><div class="ct">Month '+mo.month+'</div>'+
-      '<span style="font-size:12px;color:var(--g400)">'+mo.dates.length+' sessions</span></div>'+
+      '<span style="font-size:12px;color:var(--g400)">'+sessions.length+' sessions · Điểm nhập qua End Session → Participation</span></div>'+
       '<div class="tw"><table style="border-collapse:collapse;font-size:12px">'+
         '<thead><tr>'+
-          '<th style="padding:8px 13px;background:var(--g900);color:white;position:sticky;left:0;z-index:2">Student</th>'+
+          '<th style="padding:8px 13px;background:var(--g900);color:white;position:sticky;left:0;z-index:2;min-width:140px">Student</th>'+
           sessionHeaders+
-          '<th style="padding:8px 13px;background:var(--g900);color:white;min-width:70px">Avg</th>'+
-          '<th style="padding:8px 13px;background:var(--g900);color:white">Award</th>'+
-        '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
-      '<div style="padding:10px 18px;font-size:12px;color:var(--g400)">💡 Participation scores are entered via End Session → individual session records.</div>'+
-      '</div>';
+          '<th style="padding:8px 13px;background:var(--g900);color:white;min-width:55px;text-align:center">Avg</th>'+
+          '<th style="padding:8px 13px;background:var(--g900);color:white;min-width:60px">Award</th>'+
+        '</tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+      '</table></div></div>';
   }).join('');
 
   el.innerHTML=html;
