@@ -103,6 +103,49 @@ table.pt tr:last-child td{border-bottom:none;}
 @media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:900px){.main{margin-left:0;}.sidebar{display:none;}.content{padding:14px;}}
 @media(max-width:600px){.stats-grid{grid-template-columns:1fr;}}
+
+/* MOBILE */
+@media(max-width:768px){
+  .main{margin-left:0;}.sidebar{display:none;}
+  .content{padding:10px 10px 80px;}
+  .topbar{padding:10px 14px;}
+  .page-title{font-size:16px;}
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+  .stat-card{padding:14px;}
+  .stat-val{font-size:22px;}
+  .stat-icon{width:30px;height:30px;font-size:14px;margin-bottom:8px;}
+  .cal-day{min-height:52px;padding:4px;}
+  .dn{font-size:11px;}
+  .today-dot{width:20px;height:20px;font-size:11px;}
+  .ev{font-size:10px;padding:2px 4px;}
+  .cal-dh{padding:6px 2px;font-size:9px;}
+  .list-date{min-width:76px;padding:10px;}
+  .list-content{padding:10px;}
+  .list-status{padding:10px;}
+  .hw-grid{grid-template-columns:1fr;}
+  .hw-card{padding:14px;}
+  .tuition-card{padding:16px;}
+  .sd{width:28px;height:28px;font-size:9px;}
+  .vt-btn{padding:5px 8px;font-size:11px;}
+}
+
+/* BOTTOM NAV */
+.mob-nav{
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;
+  background:#1a1916;padding:6px 0 env(safe-area-inset-bottom,6px);
+  border-top:1px solid rgba(255,255,255,.1);
+}
+.mob-nav-inner{display:flex;justify-content:space-around;align-items:center;}
+.mnb{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:none;border:none;cursor:pointer;
+  color:rgba(255,255,255,.4);padding:4px 6px;min-width:52px;
+  font-family:'DM Sans',sans-serif;transition:color .18s;
+}
+.mnb.active{color:white;}
+.mnb .mi{font-size:20px;line-height:1;}
+.mnb .ml{font-size:9px;font-weight:600;}
+@media(max-width:768px){.mob-nav{display:block;}}
 </style>
 </head>
 <body>
@@ -668,6 +711,47 @@ function doLogout() { localStorage.removeItem('userSession'); location.href='ind
 init();
 
 } // end if(sess)
+</script>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mob-nav">
+  <div class="mob-nav-inner">
+    <button class="mnb active" id="mnb-schedule" onclick="mobNav('schedule',this)">
+      <span class="mi">📅</span><span class="ml">Schedule</span>
+    </button>
+    <button class="mnb" id="mnb-homework" onclick="mobNav('homework',this)">
+      <span class="mi">📝</span><span class="ml">Homework</span>
+    </button>
+    <button class="mnb" id="mnb-tuition" onclick="mobNav('tuition',this)">
+      <span class="mi">💳</span><span class="ml">Tuition</span>
+    </button>
+    <button class="mnb" id="mnb-participation" onclick="mobNav('participation',this)">
+      <span class="mi">⭐</span><span class="ml">Score</span>
+    </button>
+    <button class="mnb" id="mnb-settings" onclick="mobNav('settings',this)">
+      <span class="mi">⚙️</span><span class="ml">Settings</span>
+    </button>
+  </div>
+</nav>
+<script>
+function mobNav(secId, btn){
+  if(typeof nav==='function') nav(secId);
+  document.querySelectorAll('.mnb').forEach(function(b){b.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+}
+// Sync sidebar nav clicks to update mobile nav
+(function(){
+  var orig = typeof nav === 'function' ? nav : null;
+  if(!orig) return;
+  window._origNav = orig;
+  window.nav = function(id){
+    orig(id);
+    var map = {schedule:'mnb-schedule',homework:'mnb-homework',
+               tuition:'mnb-tuition',participation:'mnb-participation',settings:'mnb-settings'};
+    document.querySelectorAll('.mnb').forEach(function(b){b.classList.remove('active');});
+    if(map[id]){var el=document.getElementById(map[id]);if(el)el.classList.add('active');}
+  };
+})();
 </script>
 </body>
 </html>

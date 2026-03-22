@@ -247,9 +247,99 @@ textarea.fc{resize:vertical;min-height:60px;}
 }
 .arc-btn.active{background:white;color:var(--g900);box-shadow:var(--sh);}
 /* ═══════════════════════════════════════ RESPONSIVE */
-@media(max-width:900px){
-  .main{margin-left:0;} .sidebar{display:none;}
-  .content{padding:14px;} .stat-row{gap:8px;}
+@media(max-width:768px){
+  /* Layout */
+  .main{margin-left:0;}
+  .sidebar{display:none;}
+  .content{padding:12px 10px 80px;} /* bottom padding for nav bar */
+  .stat-row{gap:8px;}
+  .stat-box{min-width:calc(50% - 4px);padding:12px 14px;}
+  .stat-val{font-size:22px;}
+
+  /* Topbar */
+  .topbar{padding:10px 14px;}
+  .ptitle{font-size:15px;}
+  #todayLabel{display:none;}
+  #refreshBtn{display:none;} /* hide refresh on mobile — use pull to refresh or menu */
+
+  /* Cards */
+  .card{border-radius:9px;margin-bottom:12px;}
+  .ch{padding:12px 14px;}
+  .ct{font-size:14px;}
+  .cb{padding:12px 14px;}
+
+  /* Tables */
+  table{font-size:11px;}
+  th,td{padding:7px 8px;}
+
+  /* Tabs */
+  .ctabs{gap:5px;margin-bottom:14px;}
+  .ctab{padding:5px 11px;font-size:11px;}
+
+  /* Buttons */
+  .btn{padding:7px 12px;font-size:12px;}
+  .btn-sm{padding:3px 8px;font-size:10px;}
+
+  /* Modals — full screen on mobile */
+  .mo{align-items:flex-end;}
+  .md{
+    border-radius:18px 18px 0 0;
+    max-width:100%;width:100%;
+    max-height:92vh;
+    padding:20px 18px;
+    margin:0;
+  }
+  .md-h{font-size:16px;}
+
+  /* Sec headers */
+  .sec-hd{flex-direction:column;align-items:flex-start;gap:8px;}
+  .sec-title{font-size:16px;}
+
+  /* Stat row 2 cols */
+  .stat-row{flex-wrap:wrap;}
+
+  /* Step tabs scroll */
+  .step-tabs{overflow-x:auto;gap:0;}
+  .step-tab{padding:8px 12px;font-size:11.5px;white-space:nowrap;}
+}
+
+/* ══ BOTTOM NAV BAR (mobile only) ═════════════════════════════ */
+.mobile-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  background:var(--g900);
+  padding:8px 0 env(safe-area-inset-bottom,8px);
+  border-top:1px solid rgba(255,255,255,.1);
+}
+.mobile-nav-inner{
+  display:flex;justify-content:space-around;align-items:center;
+}
+.mnav-btn{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:none;border:none;cursor:pointer;
+  color:rgba(255,255,255,.4);padding:4px 8px;min-width:50px;
+  font-family:var(--font);transition:color .18s;
+}
+.mnav-btn.active{color:white;}
+.mnav-btn .mnav-ico{font-size:20px;line-height:1;}
+.mnav-btn .mnav-lbl{font-size:9px;font-weight:600;letter-spacing:.3px;}
+/* More menu */
+.mnav-more-menu{
+  display:none;position:fixed;bottom:60px;right:0;left:0;z-index:60;
+  background:var(--g900);border-top:1px solid rgba(255,255,255,.1);
+  padding:8px;
+}
+.mnav-more-menu.show{display:block;}
+.mnav-more-item{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;border-radius:8px;cursor:pointer;
+  color:rgba(255,255,255,.7);font-size:13px;font-weight:500;
+  border:none;background:transparent;width:100%;text-align:left;
+  font-family:var(--font);
+}
+.mnav-more-item:hover,.mnav-more-item.active{background:var(--red);color:white;}
+@media(max-width:768px){
+  .mobile-nav{display:block;}
 }
 </style>
 </head>
@@ -577,6 +667,38 @@ textarea.fc{resize:vertical;min-height:60px;}
 </div>
 
 <div id="toast" class="toast"></div>
+
+<!-- ══════════════════════════════════════════════════════ MOBILE NAV -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-inner">
+    <button class="mnav-btn active" id="mnav-overview" onclick="mnavGo('overview',this)">
+      <span class="mnav-ico">📊</span><span class="mnav-lbl">Overview</span>
+    </button>
+    <button class="mnav-btn" id="mnav-tuition" onclick="mnavGo('tuition',this)">
+      <span class="mnav-ico">💳</span><span class="mnav-lbl">Attendance</span>
+    </button>
+    <button class="mnav-btn" id="mnav-endsession" onclick="openFinishFor(null)" style="color:var(--red)">
+      <span class="mnav-ico" style="background:var(--red);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;margin-top:-14px;box-shadow:0 4px 12px rgba(224,26,34,.5)">✅</span>
+      <span class="mnav-lbl" style="color:white">End</span>
+    </button>
+    <button class="mnav-btn" id="mnav-homework" onclick="mnavGo('homework',this)">
+      <span class="mnav-ico">📝</span><span class="mnav-lbl">Homework</span>
+    </button>
+    <button class="mnav-btn" id="mnav-more" onclick="toggleMnavMore(this)">
+      <span class="mnav-ico">☰</span><span class="mnav-lbl">More</span>
+    </button>
+  </div>
+</nav>
+
+<!-- More menu overlay -->
+<div class="mnav-more-menu" id="mnavMoreMenu">
+  <button class="mnav-more-item" onclick="mnavGo('weekly',null);toggleMnavMore()"><span>🗓</span> Weekly Schedule</button>
+  <button class="mnav-more-item" onclick="mnavGo('participation',null);toggleMnavMore()"><span>🙋</span> Participation</button>
+  <button class="mnav-more-item" onclick="mnavGo('diligence',null);toggleMnavMore()"><span>🏆</span> Diligent Report</button>
+  <button class="mnav-more-item" onclick="mnavGo('archive',null);toggleMnavMore()"><span>🗄</span> Archive</button>
+  <button class="mnav-more-item" onclick="mnavGo('settings',null);toggleMnavMore()"><span>⚙️</span> Settings</button>
+  <button class="mnav-more-item" onclick="doLogout()" style="color:#fca5a5"><span>🚪</span> Sign Out</button>
+</div>
 
 <!-- ══════════════════════════════════════════════════════ SCRIPT -->
 <script>
@@ -2066,6 +2188,48 @@ async function changePw(){
 // ═══════════════════════════════════════════════════════
 function closeMo(id){document.getElementById(id).classList.remove('show');}
 function doLogout(){localStorage.removeItem('userSession');location.href='index.html';}
+
+// ── Mobile nav helpers
+function mnavGo(secId, btn){
+  showSec(secId);
+  // Update mobile nav active state
+  document.querySelectorAll('.mnav-btn').forEach(function(b){b.classList.remove('active');});
+  // Map secId to mnav button
+  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework'};
+  if(map[secId]) document.getElementById(map[secId]).classList.add('active');
+  // Close more menu if open
+  document.getElementById('mnavMoreMenu').classList.remove('show');
+}
+
+function toggleMnavMore(btn){
+  var menu=document.getElementById('mnavMoreMenu');
+  var isOpen=menu.classList.contains('show');
+  menu.classList.toggle('show');
+  // Mark more button active when open
+  var moreBtn=document.getElementById('mnav-more');
+  if(moreBtn) moreBtn.classList.toggle('active',!isOpen);
+  // Close when clicking outside
+  if(!isOpen){
+    setTimeout(function(){
+      document.addEventListener('click',function handler(e){
+        if(!menu.contains(e.target)&&!document.getElementById('mnav-more').contains(e.target)){
+          menu.classList.remove('show');
+          if(moreBtn) moreBtn.classList.remove('active');
+          document.removeEventListener('click',handler);
+        }
+      });
+    },10);
+  }
+}
+
+// Also sync sidebar showSec to update mobile nav active state
+var _origShowSec = showSec;
+showSec = function(id){
+  _origShowSec(id);
+  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework'};
+  document.querySelectorAll('.mnav-btn').forEach(function(b){b.classList.remove('active');});
+  if(map[id]) document.getElementById(map[id]).classList.add('active');
+};
 function toast(msg,type){
   var t=document.getElementById('toast');
   t.textContent=msg;t.className='toast '+(type||'')+' show';
