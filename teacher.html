@@ -498,12 +498,16 @@ textarea.fc{resize:vertical;min-height:60px;}
 
     <!-- Step 3: Homework -->
     <div class="step-panel" id="step2">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:600;color:var(--g600)">Homework Assignments</div>
-        <button class="btn btn-g btn-sm" onclick="addHWEntry()">+ Add</button>
+      <div id="hwSessionInfo" style="background:var(--g50);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--g600)">
+        Loading session info…
       </div>
-      <div id="hwEntries" style="margin-bottom:14px"></div>
-      <div style="font-size:11px;color:var(--g400);margin-bottom:12px">💡 Leave blank to skip homework for this session.</div>
+      <div class="fg">
+        <label class="fl">Nội dung bài tập <span style="color:var(--g400);font-weight:400">(để trống nếu không có bài)</span></label>
+        <textarea class="fc" id="hwContent" placeholder="Mô tả nội dung bài tập…" style="min-height:80px"></textarea>
+      </div>
+      <div style="font-size:11px;color:var(--g400);margin-bottom:12px">
+        💡 Skill & Deadline sẽ tự động lấy từ Schedule của buổi học này.
+      </div>
       <div class="md-act">
         <button class="btn btn-g" onclick="switchStep(1,document.querySelectorAll('.step-tab')[1])">← Back</button>
         <div style="flex:1"></div>
@@ -674,25 +678,21 @@ function updateStats() {
   document.getElementById('statHW').textContent = '—';
 }
 
-// Silently preload tuition + schedule data for all classes in background
+// Silently preload using getAttendanceMatrix (single call per class)
 async function preloadAllClasses(){
   for(var i=0;i<classData.length;i++){
     var cid=classData[i].classId;
     try{
-      // Preload schedule if missing
-      if(!allSchedules[cid]){
-        var rs=await api('getClassDetail',{classId:cid});
-        if(rs&&rs.success) allSchedules[cid]=rs.schedule||[];
+      if(tuitionCache[cid]&&allSchedules[cid]) continue; // already loaded
+      var r=await api('getAttendanceMatrix',{classId:cid});
+      if(r&&r.success){
+        allSchedules[cid]=r.sessions||[];
+        var students=r.students||[];
+        students.forEach(function(s){ s.sessDetail=s.attendance||{}; });
+        tuitionCache[cid]=students;
+        tuitionCache[cid+'_totalMonths']=r.totalScheduledMonths||1;
       }
-      // Preload tuition data if missing
-      if(!tuitionCache[cid]){
-        var rt=await api('getTuitionForClass',{classId:cid});
-        if(rt&&rt.success){
-          tuitionCache[cid]=rt.students;
-          tuitionCache[cid+'_totalMonths']=rt.totalScheduledMonths||1;
-        }
-      }
-    }catch(e){/* silent fail */}
+    }catch(e){/* silent */}
   }
 }
 
@@ -879,7 +879,7 @@ function filterTuition(classId,btn){
   loadTuition(classId);
 }
 
-async function loadTuition(classId){
+async function loadTuition(classId, forceRefresh){
   var el=document.getElementById('tuitionContent');
   document.getElementById('tuitionTitle').textContent=
     classId==='all'?'All Classes — Tuition':'Tuition & Attendance — '+classId;
@@ -903,42 +903,26 @@ async function loadTuition(classId){
     return;
   }
 
-  // ── Use cache if available (instant render) — skip if forceRefresh
-  if(!arguments[1] && tuitionCache[classId] && allSchedules[classId]){
+  // Use cache if not forced
+  if(!forceRefresh && tuitionCache[classId] && allSchedules[classId]){
     renderTuitionGrid(classId);
     return;
   }
 
   el.innerHTML='<p style="padding:30px;text-align:center;color:var(--g400)">Loading…</p>';
   try {
-    // Fetch schedule, tuition, AND attendance detail in parallel
-    var promises=[];
-    if(!allSchedules[classId]) promises.push(api('getClassDetail',{classId:classId}));
-    else promises.push(Promise.resolve(null));
-    promises.push(api('getTuitionForClass',{classId:classId}));
-
-    var results=await Promise.all(promises);
-    if(results[0]&&results[0].success) allSchedules[classId]=results[0].schedule||[];
-    var r=results[1];
+    // Single API call — returns students+attendance+tuition+schedule together
+    var r = await api('getAttendanceMatrix', {classId:classId});
     if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
 
-    // Build per-student attendance map from resetAttendance (gives real date→status)
-    var students=r.students||[];
-    var attPromises=students.map(function(s){
-      return api('resetAttendance',{studentEmail:s.email,classId:classId})
-        .then(function(ar){
-          if(ar.success&&ar.records){
-            var map={};
-            ar.records.forEach(function(rec){ map[rec.date]={status:rec.status,score:rec.score||0}; });
-            s.sessDetail=map;
-          }
-          return s;
-        }).catch(function(){return s;});
-    });
-    await Promise.all(attPromises);
+    allSchedules[classId] = r.sessions||[];
 
-    tuitionCache[classId]=students;
-    tuitionCache[classId+'_totalMonths']=r.totalScheduledMonths||1;
+    // Each student already has attendance:{date:{status,score}} from GAS
+    var students = r.students||[];
+    students.forEach(function(s){ s.sessDetail = s.attendance||{}; });
+
+    tuitionCache[classId] = students;
+    tuitionCache[classId+'_totalMonths'] = r.totalScheduledMonths||1;
     renderTuitionGrid(classId);
   } catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>';}
 }
@@ -1035,9 +1019,11 @@ function renderTuitionGrid(classId){
       cells+='<td style="padding:3px 6px;border-right:2px solid var(--g200);border-left:1px solid var(--g200);background:#f0fdf4;min-width:100px" id="'+paidCellId+'"></td>';
     }
     return '<tr>'+
-      '<td style="padding:6px 12px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:5;min-width:170px;box-shadow:2px 0 6px rgba(0,0,0,.06)">'+
+      '<td style="padding:6px 12px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:5;min-width:200px;box-shadow:2px 0 6px rgba(0,0,0,.06)">'+
         '<div style="font-size:13px;font-weight:700">'+s.name+'</div>'+
-        '<div style="font-size:10px;color:var(--g400)">'+s.total+' sessions</div>'+
+        (s.studentId?'<div style="font-size:10px;color:#1d4ed8;font-family:monospace;margin-top:1px">'+s.studentId+'</div>':'')+
+        '<div style="font-size:10px;color:var(--g400);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px" title="'+s.email+'">'+s.email+'</div>'+
+        '<div style="font-size:9px;color:var(--g300);margin-top:1px">'+s.total+' sessions</div>'+
       '</td>'+cells+'</tr>';
   }).join('');
 
@@ -1213,6 +1199,65 @@ function switchStep(idx, btn) {
   document.querySelectorAll('.step-panel').forEach(function(p){p.classList.remove('active');});
   if(btn) btn.classList.add('active');
   document.getElementById('step'+idx).classList.add('active');
+  // When reaching HW step, show auto-computed skill + deadline info
+  if(idx===2) updateHWSessionInfo();
+}
+
+function updateHWSessionInfo(){
+  var classId=currentFinishClass;
+  var date=document.getElementById('moDate').value;
+  var info=document.getElementById('hwSessionInfo');
+  if(!date||!classId){info.textContent='Chọn ngày học trước.';return;}
+  var sched=allSchedules[classId]||[];
+  var thisSess=sched.find(function(s){return s.date===date;});
+  var skill=thisSess?thisSess.skill:'—';
+  var skillName={'WRITING':'Writing','SPEAKING':'Speaking','LISTENING':'Listening',
+    'READING':'Reading','GRAMMAR':'Grammar','VOCABULARY':'Vocabulary'};
+  var displaySkill=skillName[(skill||'').toUpperCase()]||skill||'—';
+  // Find next session with same skill for deadline
+  var deadline=autoDeadline(classId,date,skill);
+  var dlDisplay=deadline?deadline.split('-').reverse().join('/'):'—';
+  info.innerHTML=
+    '<div style="display:flex;gap:16px;flex-wrap:wrap">'+
+    '<div><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.4px">Skill</div>'+
+    '<div style="font-size:14px;font-weight:700;color:var(--red);margin-top:2px">'+displaySkill+'</div></div>'+
+    '<div><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.4px">Ngày dạy</div>'+
+    '<div style="font-size:14px;font-weight:700;margin-top:2px">'+date.split('-').reverse().join('/')+'</div></div>'+
+    '<div><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.4px">Deadline (auto)</div>'+
+    '<div style="font-size:14px;font-weight:700;color:#16a34a;margin-top:2px">'+dlDisplay+'</div></div>'+
+    '</div>';
+}
+
+function autoDeadline(classId, sessionDate, skill){
+  var skillUp=(skill||'').toUpperCase();
+  var sched=allSchedules[classId]||[];
+
+  // Find next session with same skill after sessionDate
+  var future=sched.filter(function(s){
+    return s.date>sessionDate && (s.skill||'').toUpperCase()===skillUp;
+  });
+  var nextSameSkill=future.length?future[0].date:'';
+
+  if(!nextSameSkill){
+    // Fallback: next any session
+    var anyFuture=sched.filter(function(s){return s.date>sessionDate;});
+    nextSameSkill=anyFuture.length?anyFuture[0].date:'';
+  }
+  if(!nextSameSkill) return '';
+
+  // Class starts 17:30 (5:30pm)
+  // Writing: deadline = 48h before next session = 17:30 two days before = previous day 17:30
+  //   → deadline date = nextSameSkill minus 2 days (we store date only, time is implied 17:30)
+  // Other skills: deadline = 2h before = 15:30 on the same day as next session
+  //   → deadline date = nextSameSkill (same day, time implied 15:30)
+  if(skillUp==='WRITING'||skillUp==='W'){
+    var d=new Date(nextSameSkill+'T17:30:00');
+    d.setDate(d.getDate()-2);
+    return d.toISOString().split('T')[0];
+  } else {
+    // Same day as next session, 2h before = 15:30
+    return nextSameSkill; // date only; reminder email sent at 15:30
+  }
 }
 
 function openFinishFor(classId) {
@@ -1232,6 +1277,7 @@ function openFinishFor(classId) {
   document.getElementById('moDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('moDayLabel').value = '';
   document.getElementById('day0Warn').style.display='none';
+  document.getElementById('hwContent').value='';
   switchStep(0, document.querySelectorAll('.step-tab')[0]);
   hwEntryCount=0;
   document.getElementById('hwEntries').innerHTML='';
@@ -1300,13 +1346,19 @@ async function doFinish(){
   });
 
   var homework=[];
-  document.querySelectorAll('.hw-entry').forEach(function(entry){
-    var type=entry.querySelector('select').value;
-    var inputs=entry.querySelectorAll('input');
-    var content=inputs[0]?inputs[0].value:'';
-    var deadline=inputs[1]?inputs[1].value:'';
-    if(content)homework.push({type:type||'',content:content,deadline:deadline||''});
-  });
+  var hwContent=document.getElementById('hwContent').value.trim();
+  if(hwContent){
+    // Auto-get skill from schedule
+    var sched=allSchedules[classId]||[];
+    var thisSess=sched.find(function(s){return s.date===date;});
+    var skill=thisSess?thisSess.skill:'';
+    // Map skill to type code
+    var skillMap={'WRITING':'W','SPEAKING':'S','LISTENING':'L','READING':'R','GRAMMAR':'G','VOCABULARY':'V'};
+    var typeCode=skillMap[(skill||'').toUpperCase()]||'G';
+    // Auto deadline = next session with same skill
+    var deadline=autoDeadline(classId,date,skill);
+    homework.push({type:typeCode, content:hwContent, deadline:deadline});
+  }
 
   try{
     var r=await api('finishSession',{classId:classId,date:date,dayLabel:dayLabel,homework:homework,attOverrides:attOverrides});
@@ -1420,7 +1472,7 @@ function renderHWTracker(classId){
     el.innerHTML='<div class="card"><div style="padding:40px;text-align:center;color:var(--g400)">'+
       '<div style="font-size:32px;margin-bottom:8px">📝</div>'+
       '<div style="font-weight:600;margin-bottom:4px">No homework assigned yet</div>'+
-      '<div style="font-size:12px">Assign homework via End Session (Step ③ Homework).</div>'+
+      '<div style="font-size:12px">Assign homework via End Session → Step ③.</div>'+
     '</div></div>';
     return;
   }
@@ -1434,90 +1486,74 @@ function renderHWTracker(classId){
     Undone:{bg:'#fee2e2',color:'#991b1b',icon:'✗'},
   };
 
-  // Group homework into months of 8 — always pad each month to exactly 8 slots
+  // Group HW by month (8 sessions = 1 month, 1 HW per session)
+  // Each hwList item = 1 session's homework
   var months=[];
   for(var i=0;i<hwList.length;i+=8){
-    var chunk=hwList.slice(i,i+8);
-    // Pad to 8 with nulls
-    while(chunk.length<8) chunk.push(null);
-    months.push({month:Math.floor(i/8)+1, hw:chunk});
+    months.push({month:Math.floor(i/8)+1, hw:hwList.slice(i,i+8)});
   }
-  // If no homework at all, still show month 1 with 8 empty slots
-  if(!months.length) months.push({month:1, hw:[null,null,null,null,null,null,null,null]});
+  if(!months.length) months=[{month:1,hw:[]}];
 
-  // Build month header (colspan = 8 hw cols + 1 summary = 9)
-  var monthHeaders='<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;min-width:150px;box-shadow:2px 0 8px rgba(0,0,0,.1)"></th>';
+  // ── Header row 1: Month groups (colspan = sessions in month + 1 summary)
+  var monthHeaders='<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;min-width:155px;box-shadow:2px 0 8px rgba(0,0,0,.1)"></th>';
   months.forEach(function(mo){
     var bg=mo.month%2===0?'#e8e6e2':'var(--g100)';
-    monthHeaders+='<th colspan="9" style="padding:7px 4px;text-align:center;background:'+bg+
+    monthHeaders+='<th colspan="'+(mo.hw.length+1)+'" style="padding:7px 4px;text-align:center;background:'+bg+
       ';border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700;color:var(--g600)">Month '+mo.month+'</th>';
   });
 
-  // Build HW sub-headers — always 8 cols + 1 Done
+  // ── Header rows 2-4: Skill | Date | Deadline (3 rows in one <th>)
   var hwHeaders='<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;box-shadow:2px 0 8px rgba(0,0,0,.1)"></th>';
   months.forEach(function(mo){
     var bg2=mo.month%2===0?'#eae8e4':'#f5f4f2';
     mo.hw.forEach(function(hw,idx){
-      if(hw){
-        var col=typeColors[hw.type]||'#6b7280';
-        var tname=typeNames[hw.type]||hw.type;
-        hwHeaders+='<th style="padding:6px 4px;text-align:center;min-width:80px;background:'+bg2+';border-bottom:2px solid '+col+'">'+
-          '<div style="font-size:9px;font-weight:700;color:'+col+'">'+tname+'</div>'+
-          '<div style="font-size:9px;font-weight:600;color:var(--g900)">HW '+(idx+1)+'</div>'+
-          '<div style="font-size:8px;color:var(--g400)">Due: '+hw.deadline+'</div>'+
-        '</th>';
-      } else {
-        hwHeaders+='<th style="padding:6px 4px;text-align:center;min-width:70px;background:'+bg2+';border-bottom:2px dashed var(--g200)">'+
-          '<div style="font-size:9px;font-weight:700;color:var(--g300)">—</div>'+
-          '<div style="font-size:9px;color:var(--g300)">HW '+(idx+1)+'</div>'+
-        '</th>';
-      }
+      var col=typeColors[hw.type]||'#6b7280';
+      var tname=typeNames[hw.type]||hw.type;
+      var dTaught=hw.sessionDate?hw.sessionDate.slice(5).replace('-','/'):'';
+      var dDue=hw.deadline?hw.deadline.slice(5).replace('-','/'):'';
+      hwHeaders+='<th style="padding:5px 4px;text-align:center;min-width:80px;background:'+bg2+';border-bottom:2px solid '+col+';vertical-align:bottom">'+
+        '<div style="font-size:10px;font-weight:800;color:'+col+'">'+tname+'</div>'+
+        '<div style="font-size:9px;color:var(--g600);margin-top:2px">📅 '+dTaught+'</div>'+
+        '<div style="font-size:9px;color:#dc2626;margin-top:1px">⏰ '+dDue+'</div>'+
+      '</th>';
     });
-    // Done summary column
-    hwHeaders+='<th style="padding:6px 4px;text-align:center;min-width:55px;background:#f0fdf4;border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:9px;font-weight:700;color:#166534">Done</th>';
+    // Done summary per month
+    hwHeaders+='<th style="padding:5px 4px;text-align:center;min-width:52px;background:#f0fdf4;border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:9px;font-weight:700;color:#166534;vertical-align:bottom">Done</th>';
   });
 
-  // Summary rate row
-  var rateRow='<td style="padding:6px 13px;background:var(--g100);font-size:11px;font-weight:700;color:var(--g600);position:sticky;left:0">Rate</td>';
+  // ── Rate row
+  var rateRow='<td style="padding:5px 13px;background:var(--g100);font-size:11px;font-weight:700;color:var(--g600);position:sticky;left:0">Rate</td>';
   months.forEach(function(mo){
     mo.hw.forEach(function(hw){
-      if(!hw){
-        rateRow+='<td style="padding:5px;text-align:center;background:var(--g100);color:var(--g300)">—</td>';
-        return;
-      }
       var done=students.filter(function(s){return s.submissions[hw.hwId]&&s.submissions[hw.hwId].status==='Done';}).length;
       var total=students.length;
       var pct=total>0?Math.round(done/total*100):0;
-      rateRow+='<td style="padding:5px;text-align:center;background:var(--g100)">'+
+      rateRow+='<td style="padding:4px;text-align:center;background:var(--g100)">'+
         '<div style="font-size:11px;font-weight:700;color:'+(pct>=80?'#16a34a':pct>=50?'#d97706':'#dc2626')+'">'+done+'/'+total+'</div>'+
         '<div style="font-size:8px;color:var(--g400)">'+pct+'%</div></td>';
     });
     rateRow+='<td style="background:var(--g100);border-right:2px solid var(--g200);border-left:1px solid var(--g200)"></td>';
   });
 
-  // Student rows
+  // ── Student rows
   var studentRows=students.map(function(s){
     var cells='';
     months.forEach(function(mo){
-      var monthDone=0, monthReal=mo.hw.filter(function(h){return h!==null;}).length;
+      var moDone=0;
       mo.hw.forEach(function(hw){
-        if(!hw){
-          // Empty placeholder cell
-          cells+='<td style="padding:3px 4px;text-align:center;border-bottom:1px solid var(--g100);background:var(--g50)"></td>';
-          return;
-        }
         var sub=s.submissions[hw.hwId];
         var status=sub?sub.status:'Undone';
-        if(status==='Done'||status==='Late')monthDone++;
+        if(status==='Done') moDone++;
         var cellId='hwc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+hw.hwId.replace(/[^a-zA-Z0-9]/g,'_');
         cells+='<td style="padding:3px 4px;text-align:center;border-bottom:1px solid var(--g100)" id="'+cellId+'"></td>';
       });
-      // Month summary — only count real slots
-      var sumBg=monthReal===0?'var(--g50)':monthDone===monthReal?'#dcfce7':monthDone===0?'#fee2e2':'#fef9c3';
-      cells+='<td style="padding:4px 6px;text-align:center;background:'+sumBg+';border-bottom:1px solid var(--g100);border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700">'+(monthReal>0?monthDone+'/'+monthReal:'—')+'</td>';
+      var moTotal=mo.hw.length;
+      var sumBg=moTotal===0?'var(--g50)':moDone===moTotal?'#dcfce7':moDone===0?'#fee2e2':'#fef9c3';
+      cells+='<td style="padding:4px 5px;text-align:center;border-bottom:1px solid var(--g100);border-right:2px solid var(--g200);border-left:1px solid var(--g200);background:'+sumBg+';font-size:11px;font-weight:700">'+
+        (moTotal>0?moDone+'/'+moTotal:'—')+'</td>';
     });
     return '<tr>'+
-      '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:150px">'+
+      '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:155px">'+
         '<div style="font-size:13px;font-weight:700">'+s.name+'</div>'+
         (s.studentId?'<div style="font-size:10px;color:#1d4ed8;font-family:monospace">'+s.studentId+'</div>':'')+
       '</td>'+cells+'</tr>';
@@ -1525,7 +1561,7 @@ function renderHWTracker(classId){
 
   el.innerHTML='<div class="card"><div class="ch">'+
     '<div class="ct">'+classId+' — Homework Tracker</div>'+
-    '<span style="font-size:12px;color:var(--g400)">'+hwList.length+' assignments · '+months.length+' month(s)</span>'+
+    '<span style="font-size:12px;color:var(--g400)">'+hwList.length+' session(s) · '+months.length+' month(s)</span>'+
     '</div>'+
     '<div class="tw"><table style="border-collapse:collapse;font-size:12px">'+
       '<thead>'+
@@ -1536,10 +1572,9 @@ function renderHWTracker(classId){
       '<tbody>'+studentRows+'</tbody>'+
     '</table></div></div>';
 
-  // Wire status dropdowns (only real hw slots)
+  // Wire dropdowns
   students.forEach(function(s){
     hwList.forEach(function(hw){
-      if(!hw) return;
       var sub=s.submissions[hw.hwId];
       var status=sub?sub.status:'Undone';
       var cellId='hwc-'+classId.replace(/ /g,'_')+'-'+s.email.replace(/[@.]/g,'_')+'-'+hw.hwId.replace(/[^a-zA-Z0-9]/g,'_');
@@ -1607,50 +1642,88 @@ async function loadPart(classId){
     el.innerHTML='<div class="card"><div class="cb" style="color:var(--g400);text-align:center;padding:32px">Select a class to view participation data.</div></div>';
     return;
   }
-  // Use cache if available
-  if(allSchedules[classId] && window._partCache && window._partCache[classId]){
-    renderPart(classId, window._partCache[classId]);
-    return;
-  }
   el.innerHTML='<p style="padding:30px;text-align:center;color:var(--g400)">Loading…</p>';
   try{
-    var promises=[];
-    if(!allSchedules[classId]) promises.push(api('getClassDetail',{classId:classId}));
-    else promises.push(Promise.resolve(null));
-    promises.push(api('getRewards',{classId:classId}));
-    var results=await Promise.all(promises);
-    if(results[0]&&results[0].success) allSchedules[classId]=results[0].schedule||[];
-    var r=results[1];
-    if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
-    if(!window._partCache) window._partCache={};
-    window._partCache[classId]=r.months||[];
-    renderPart(classId,r.months||[]);
+    // Ensure schedule loaded
+    if(!allSchedules[classId]){
+      var rs=await api('getClassDetail',{classId:classId});
+      if(rs&&rs.success) allSchedules[classId]=rs.schedule||[];
+    }
+    // Use tuitionCache sessDetail if available (has per-session scores)
+    // Otherwise fetch getRewards for avgScore fallback
+    if(tuitionCache[classId]&&tuitionCache[classId].length){
+      renderPartFromCache(classId);
+    } else {
+      var r=await api('getRewards',{classId:classId});
+      if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
+      renderPartFallback(classId,r.months||[]);
+    }
   }catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>';}
 }
 
-function renderPart(classId,months){
-  var el=document.getElementById('partContent');
-  if(!months.length){el.innerHTML='<div class="card"><div class="cb" style="color:var(--g400);text-align:center;padding:32px">No data yet.</div></div>';return;}
-
-  // Get all scheduled non-Day0 session dates
+function renderPartFromCache(classId){
+  // Build participation view from sessDetail (has real per-session scores)
+  var students=tuitionCache[classId]||[];
   var schedDates=(allSchedules[classId]||[])
     .filter(function(s){return s.date&&s.dayLabel.toLowerCase().replace(/ /g,'').replace('day','')!=='0';})
     .map(function(s){return s.date;});
+  var maxMonths=Math.ceil(schedDates.length/8)||1;
+  // Build months
+  var months=[];
+  for(var mo=0;mo<maxMonths;mo++){
+    var moDates=schedDates.slice(mo*8,(mo+1)*8);
+    var moStudents=students.map(function(s){
+      var sessScores={};
+      var total=0,count=0;
+      moDates.forEach(function(d){
+        var rec=s.sessDetail&&s.sessDetail[d];
+        var score=rec?Number(rec.score)||0:null;
+        sessScores[d]=score;
+        if(score!==null&&score>0){total+=score;count++;}
+      });
+      return {name:s.name,email:s.email,sessScores:sessScores,
+        avg:count>0?Math.round(total/count*10)/10:0};
+    });
+    months.push({month:mo+1,moDates:moDates,students:moStudents});
+  }
+  renderPart(classId,months,true);
+}
 
-  var html=months.map(function(mo){
-    var topScore=0;
-    mo.students.forEach(function(s){if((s.avgScore||0)>topScore)topScore=s.avgScore||0;});
-
-    // Always 8 session columns for this month
+function renderPartFallback(classId,rewardsMonths){
+  // Convert getRewards months to renderPart format
+  var schedDates=(allSchedules[classId]||[])
+    .filter(function(s){return s.date&&s.dayLabel.toLowerCase().replace(/ /g,'').replace('day','')!=='0';})
+    .map(function(s){return s.date;});
+  var months=rewardsMonths.map(function(mo){
     var moStart=(mo.month-1)*8;
     var moDates=schedDates.slice(moStart,moStart+8);
+    var moStudents=mo.students.map(function(s){
+      var sessScores={};
+      moDates.forEach(function(d){sessScores[d]=null;});
+      return {name:s.name,email:s.email,sessScores:sessScores,avg:s.avgScore||0};
+    });
+    return {month:mo.month,moDates:moDates,students:moStudents};
+  });
+  renderPart(classId,months,false);
+}
 
-    // Build session sub-headers (always 8)
+function renderPart(classId,months,hasRealScores){
+  var el=document.getElementById('partContent');
+  if(!months.length){
+    el.innerHTML='<div class="card"><div class="cb" style="color:var(--g400);text-align:center;padding:32px">No data yet.</div></div>';
+    return;
+  }
+
+  var html=months.map(function(mo){
+    var moDates=mo.moDates||[];
+    var topAvg=0;
+    mo.students.forEach(function(s){if((s.avg||0)>topAvg)topAvg=s.avg||0;});
+
     var sessionHeaders='';
     for(var si=0;si<8;si++){
       var d=moDates[si]||'';
       var dlabel=d?d.slice(5).replace('-','/'):'-';
-      sessionHeaders+='<th style="padding:5px 3px;text-align:center;font-size:9px;min-width:38px;background:var(--g100)">'+
+      sessionHeaders+='<th style="padding:5px 3px;text-align:center;font-size:9px;min-width:40px;background:var(--g100)">'+
         '<div style="font-weight:700;color:var(--g600)">S'+(si+1)+'</div>'+
         '<div style="color:var(--g400)">'+dlabel+'</div></th>';
     }
@@ -1659,19 +1732,23 @@ function renderPart(classId,months){
       var sessCells='';
       for(var si=0;si<8;si++){
         var d=moDates[si]||'';
+        var score=d&&s.sessScores?s.sessScores[d]:null;
+        var hasScore=score!==null&&score!==undefined&&score>0;
+        var cellColor=hasScore?'var(--red)':'var(--g300)';
+        var cellBg=hasScore?'#fff1f2':'var(--g100)';
         sessCells+='<td style="padding:4px 3px;text-align:center;border-bottom:1px solid var(--g100)">'+
-          '<div style="width:32px;height:32px;border-radius:6px;background:var(--g100);margin:auto;'+
-          'display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;'+
-          'color:'+(d?'var(--g600)':'var(--g200)')+'">'+(d?'—':'')+'</div></td>';
+          '<div style="width:36px;height:28px;border-radius:6px;background:'+cellBg+';margin:auto;'+
+          'display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;'+
+          'color:'+cellColor+'">'+(d?(hasScore?score:'—'):'')+'</div></td>';
       }
-      var isTop=s.avgScore>0&&s.avgScore===topScore;
+      var isTop=s.avg>0&&s.avg===topAvg;
       return '<tr>'+
         '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:150px">'+
           '<div style="font-size:13px;font-weight:600">'+s.name+'</div>'+
         '</td>'+
         sessCells+
-        '<td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--g100);font-weight:800;font-family:var(--serif);font-size:15px;color:'+(s.avgScore>0?'var(--red)':'var(--g300)')+'">'+
-          (s.avgScore>0?s.avgScore:'—')+'</td>'+
+        '<td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--g100);font-weight:800;font-family:var(--serif);font-size:16px;color:'+(s.avg>0?'var(--red)':'var(--g300)')+'">'+
+          (s.avg>0?s.avg:'—')+'</td>'+
         '<td style="padding:8px 10px;border-bottom:1px solid var(--g100)">'+
           (isTop?'<span class="badge bstar">⭐ Top</span>':'')+'</td>'+
       '</tr>';
