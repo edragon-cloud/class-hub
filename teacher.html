@@ -1428,11 +1428,10 @@ function openFinishFor(classId) {
   document.getElementById('moDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('moDayLabel').value = '';
   document.getElementById('day0Warn').style.display='none';
-  document.getElementById('hwContent').value='';
+  // Reset hwContentArea to default single textarea
+  var hwArea=document.getElementById('hwContentArea');
+  if(hwArea) hwArea.innerHTML='<textarea class="fc" id="hwContent" placeholder="Mô tả nội dung bài tập…" style="min-height:80px;width:100%"></textarea>';
   switchStep(0, document.querySelectorAll('.step-tab')[0]);
-  hwEntryCount=0;
-  document.getElementById('hwEntries').innerHTML='';
-  addHWEntry();
   refreshModalStudents();
   document.getElementById('moFinish').classList.add('show');
 }
