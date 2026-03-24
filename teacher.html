@@ -707,7 +707,7 @@ textarea.fc{resize:vertical;min-height:60px;}
 // ═══════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbxMEFR_hkjRFQyiGyv9upuFhVxEhLqRZbs38RevMUvkeErZcGE1lmLVS4qNdsuIUuyi/exec';
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbw8nmCHNITHKB8sdt6ysWLBs3C2uRZQL-eM1O61r9oU1UoB4lax5hMmqxv3GBdFdeOK/exec';
 
 // ─── Session
 var sess = JSON.parse(localStorage.getItem('userSession')||'{}');
@@ -1518,15 +1518,15 @@ async function doFinish(){
   try{
     var r=await api('finishSession',{classId:classId,date:date,dayLabel:dayLabel,homework:homework,attOverrides:attOverrides});
     if(r.success){
-      // Save participation scores
-      var scorePromises=[];
+      // Save participation scores in 1 batch call instead of N individual calls
+      var scoreList=[];
       students.forEach(function(s){
         var inp=document.getElementById('part-'+s.email.replace(/[@.]/g,'_'));
         if(inp&&Number(inp.value)>0){
-          scorePromises.push(api('updateScore',{classId:classId,studentEmail:s.email,sessionDate:date,score:Number(inp.value)}));
+          scoreList.push({studentEmail:s.email,sessionDate:date,score:Number(inp.value)});
         }
       });
-      if(scorePromises.length) await Promise.all(scorePromises);
+      if(scoreList.length) await api('batchUpdateScores',{classId:classId,scores:scoreList});
       toast('Session saved! ✓','ok');
       closeMo('moFinish');
       // Clear ALL caches so fresh data is fetched
