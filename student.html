@@ -408,23 +408,37 @@ function renderCalendar() {
 }
 
 function renderHomework() {
-  const hw = (sd.homework||[]).filter(h=>h.daysLeft>=-1);
+  const hw = (sd.homework||[]).filter(h=>h.daysLeft>=-30);
   if (!hw.length) {
     document.getElementById('hwGrid').innerHTML = '<p style="color:var(--g400);font-size:13px;grid-column:1/-1;padding:40px;text-align:center;">🎉 No upcoming homework!</p>';
     return;
   }
-  const typeNames = {W:'Writing',L:'Listening',S:'Speaking',V:'Vocab'};
+  const typeNames = {W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
+  const statusCfg = {
+    Done:    {bg:'#dcfce7',color:'#166534',icon:'✓ Done'},
+    Late:    {bg:'#fef9c3',color:'#854d0e',icon:'⏱ Late'},
+    Partial: {bg:'#dbeafe',color:'#1e40af',icon:'½ Partial'},
+    Undone:  {bg:'#fee2e2',color:'#991b1b',icon:'✗ Undone'},
+  };
   document.getElementById('hwGrid').innerHTML = hw.map(h => {
     const d = h.daysLeft;
     const ct = d<0?'⚠ Overdue':d===0?'⏰ Due today!':d===1?'1 day left':`${d} days left`;
     const urgent = d<=1;
-    return `<div class="hw-card ${h.type||'W'}">
+    const st = h.status||'Undone';
+    const stCfg = statusCfg[st]||statusCfg.Undone;
+    // Only show status badge if teacher has marked it (not just default Undone on future hw)
+    const showStatus = st!=='Undone' || d<0;
+    const statusBadge = showStatus
+      ? `<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;background:${stCfg.bg};color:${stCfg.color};margin-top:8px">${stCfg.icon}</div>`
+      : '';
+    return `<div class="hw-card ${h.type||'W'}" style="${st==='Done'?'opacity:.7':''}">
       <div class="hw-top">
         <span class="hw-badge hb-${h.type||'W'}">${typeNames[h.type]||h.type}</span>
-        <span class="hw-countdown ${d<0?'bad':urgent?'warn':'good'}">${ct}</span>
+        <span class="hw-countdown ${d<0&&st!=='Done'?'bad':urgent&&st!=='Done'?'warn':'good'}">${st==='Done'?'✓ Done':ct}</span>
       </div>
       <div class="hw-content">${h.content||'—'}</div>
       <div class="hw-deadline">📅 Deadline: ${h.deadline||'—'}</div>
+      ${statusBadge}
     </div>`;
   }).join('');
 }
