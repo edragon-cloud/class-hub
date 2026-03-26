@@ -1733,11 +1733,6 @@ function renderHWTracker(classId){
     return (a.type||'')>(b.type||'')?1:-1;
   });
 
-  // Recalculate deadline from schedule for each HW
-  dedupedHW.forEach(function(hw){
-    hw.deadline=autoDeadline(classId, hw.sessionDate, hw.type);
-  });
-
   // Group by month (8 sessions = 1 month)
   var months=[];
   for(var i=0;i<dedupedHW.length;i+=8){
