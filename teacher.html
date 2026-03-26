@@ -537,7 +537,33 @@ textarea.fc{resize:vertical;min-height:60px;}
         </div>
       </div>
       <div class="card" style="max-width:560px">
-        <div class="ch"><div class="ct">🔒 Change Password</div></div>
+        <div class="ch"><div class="ct">📝 Homework Management</div></div>
+        <div class="cb">
+          <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Xóa homework theo lớp, ngày và skill.</p>
+          <div class="fg">
+            <label class="fl">Lớp</label>
+            <select class="fc" id="hwDelClass"></select>
+          </div>
+          <div class="fg">
+            <label class="fl">Ngày giao bài</label>
+            <input type="date" class="fc" id="hwDelDate"/>
+          </div>
+          <div class="fg">
+            <label class="fl">Skill <span style="color:var(--g400);font-weight:400">(để trống = xóa tất cả skill ngày đó)</span></label>
+            <select class="fc" id="hwDelType">
+              <option value="">— Tất cả skill —</option>
+              <option value="S">🗣 Speaking</option>
+              <option value="W">✍️ Writing</option>
+              <option value="L">🎧 Listening</option>
+              <option value="R">📖 Reading</option>
+              <option value="V">📚 Vocabulary</option>
+              <option value="G">📝 Grammar</option>
+            </select>
+          </div>
+          <div id="hwDelResult" style="display:none;margin-top:8px"></div>
+          <button class="btn btn-r" onclick="doDeleteHWFromSettings()">🗑 Xóa Homework</button>
+        </div>
+      </div>
         <div class="cb">
           <div class="fg"><label class="fl">Current Password</label><input type="password" class="fc" id="pwCur" placeholder="Current"/></div>
           <div class="fg"><label class="fl">New Password</label><input type="password" class="fc" id="pwNew" placeholder="Min 6 characters"/></div>
@@ -771,6 +797,51 @@ function showSec(id) {
   if (id==='archive') loadArchive();
   if (id==='participation' && classData.length) buildPartTabs();
   if (id==='homework' && classData.length) buildHWTrackerTabs();
+  if (id==='settings') {
+    // Populate class selector in Homework Management
+    var sel=document.getElementById('hwDelClass');
+    if(sel){
+      sel.innerHTML=classData.map(function(c){
+        return '<option value="'+c.classId+'">'+c.classId+'</option>';
+      }).join('');
+    }
+  }
+}
+
+async function doDeleteHWFromSettings(){
+  var classId=document.getElementById('hwDelClass').value;
+  var date=document.getElementById('hwDelDate').value;
+  var type=document.getElementById('hwDelType').value;
+  var res=document.getElementById('hwDelResult');
+  if(!classId||!date){
+    res.style.display='block';
+    res.style.background='#fee2e2'; res.style.color='#991b1b';
+    res.style.padding='8px 12px'; res.style.borderRadius='7px';
+    res.textContent='Vui lòng chọn lớp và ngày.';
+    return;
+  }
+  var typeNames={W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
+  var label=(type?typeNames[type]+' ':'Tất cả skill ')+'ngày '+date.slice(8)+'/'+date.slice(5,7);
+  if(!confirm('Xóa homework: '+label+' — '+classId+'?\nThao tác này không thể hoàn tác.')) return;
+  try{
+    var r=await api('deleteHomework',{classId:classId,sessionDate:date,type:type||undefined});
+    res.style.display='block';
+    if(r.success){
+      res.style.background='#dcfce7'; res.style.color='#166534';
+      res.style.padding='8px 12px'; res.style.borderRadius='7px';
+      res.textContent='✓ Đã xóa '+r.deleted+' homework. ('+label+')';
+      delete hwTrackerCache[classId];
+    } else {
+      res.style.background='#fee2e2'; res.style.color='#991b1b';
+      res.style.padding='8px 12px'; res.style.borderRadius='7px';
+      res.textContent='Lỗi: '+r.message;
+    }
+  }catch(e){
+    res.style.display='block';
+    res.style.background='#fee2e2'; res.style.color='#991b1b';
+    res.style.padding='8px 12px'; res.style.borderRadius='7px';
+    res.textContent='Connection error';
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1491,24 +1562,21 @@ function addHWEntry(){
   var id='hwe'+hwEntryCount;
   var today=new Date().toISOString().split('T')[0];
 
-  // Build deadline options from schedule of current class
+  // Build schedule reference options
   var skillEmoji={S:'🗣',W:'✍️',L:'🎧',R:'📖',V:'📚',G:'📝'};
   var skillName={S:'Speaking',W:'Writing',L:'Listening',R:'Reading',V:'Vocab',G:'Grammar'};
   var sched=(allSchedules[currentFinishClass]||[])
     .filter(function(s){return s.date>=today;})
-    .slice(0,20); // next 20 sessions
+    .slice(0,20);
 
-  var deadlineOptions='<option value="">— chọn từ lịch —</option>';
+  var schedOpts='<option value="">📅 Xem lịch học…</option>';
   sched.forEach(function(s){
-    var d=s.date;
-    var disp=d.slice(8)+'/'+d.slice(5,7); // dd/MM
+    var disp=s.date.slice(8)+'/'+s.date.slice(5,7);
     var sk=(s.skill||'').toUpperCase().slice(0,1);
     var em=skillEmoji[sk]||'📅';
     var nm=skillName[sk]||s.skill||'';
-    deadlineOptions+='<option value="'+d+'">'+em+' '+disp+(nm?' — '+nm:'')+'</option>';
+    schedOpts+='<option value="'+s.date+'">'+em+' '+disp+(nm?' — '+nm:'')+'</option>';
   });
-  // Also add manual option
-  deadlineOptions+='<option value="manual">✏️ Nhập tay…</option>';
 
   var d=document.createElement('div');
   d.id=id;
@@ -1539,25 +1607,28 @@ function addHWEntry(){
       '<textarea class="fc hwe-content" placeholder="Mô tả bài tập cụ thể…" style="min-height:60px;width:100%;resize:vertical"></textarea>'+
     '</div>'+
     '<div>'+
-      '<label style="font-size:11px;font-weight:600;color:var(--g600);display:block;margin-bottom:4px">📅 Deadline — chọn buổi học tiếp theo</label>'+
-      '<select class="fc hwe-deadline-sel" style="width:100%;margin-bottom:6px" onchange="onDeadlineSelChange(this,\''+id+'\')">'+
-        deadlineOptions+
-      '</select>'+
-      '<input type="date" class="fc hwe-deadline" style="width:100%;display:none" placeholder="Hoặc nhập ngày tay"/>'+
+      '<label style="font-size:11px;font-weight:600;color:var(--g600);display:block;margin-bottom:6px">📅 Deadline nộp bài</label>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+        '<div>'+
+          '<div style="font-size:10px;color:var(--g400);margin-bottom:4px">Tham khảo lịch học:</div>'+
+          '<select class="fc" style="width:100%;font-size:11px" onchange="syncDeadlineFromSched(this,\''+id+'\')">'+
+            schedOpts+
+          '</select>'+
+        '</div>'+
+        '<div>'+
+          '<div style="font-size:10px;color:var(--g400);margin-bottom:4px">Chọn ngày deadline:</div>'+
+          '<input type="date" class="fc hwe-deadline" style="width:100%"/>'+
+        '</div>'+
+      '</div>'+
     '</div>';
   document.getElementById('hwEntries').appendChild(d);
 }
 
-function onDeadlineSelChange(sel, entryId){
+function syncDeadlineFromSched(sel, entryId){
+  if(!sel.value) return;
   var entry=document.getElementById(entryId);
-  var manualInput=entry.querySelector('.hwe-deadline');
-  if(sel.value==='manual'){
-    manualInput.style.display='block';
-    manualInput.focus();
-  } else {
-    manualInput.style.display='none';
-    manualInput.value=sel.value; // sync value to hidden input
-  }
+  var dlInput=entry.querySelector('.hwe-deadline');
+  if(dlInput){ dlInput.value=sel.value; }
 }
 
 async function doFinish(){
@@ -1581,11 +1652,8 @@ async function doFinish(){
     var content=((entry.querySelector('.hwe-content')||{}).value||'').trim();
     var assignedDate=(entry.querySelector('.hwe-assigned')||{}).value||date;
     // Deadline: from select (if not 'manual') or from manual input
-    var dlSel=entry.querySelector('.hwe-deadline-sel');
     var dlManual=entry.querySelector('.hwe-deadline');
-    var deadline='';
-    if(dlSel&&dlSel.value&&dlSel.value!=='manual') deadline=dlSel.value;
-    else if(dlManual) deadline=dlManual.value||'';
+    var deadline=dlManual?dlManual.value||'':'';
     if(content && skill){
       homework.push({type:skill, content:content, sessionDate:assignedDate, deadline:deadline});
     }
@@ -1758,10 +1826,16 @@ function renderHWTracker(classId){
       // Format dates as dd/MM
       var dTaught=hw.sessionDate?hw.sessionDate.slice(5).replace('-','/'):'';
       var dDue=hw.deadline?hw.deadline.slice(5).replace('-','/'):'—';
-      hwHeaders+='<th style="padding:5px 4px;text-align:center;min-width:76px;background:'+bg2+';border-bottom:2px solid '+col+';vertical-align:bottom">'+
+      hwHeaders+='<th style="padding:5px 4px;text-align:center;min-width:80px;background:'+bg2+';border-bottom:2px solid '+col+';vertical-align:bottom;position:relative">'+
         '<div style="font-size:11px;font-weight:800;color:'+col+'">'+tname+'</div>'+
         '<div style="font-size:9px;color:var(--g600);margin-top:2px">📅 '+dTaught+'</div>'+
         '<div style="font-size:9px;color:#dc2626;margin-top:1px">⏰ '+dDue+'</div>'+
+        '<button onclick="deleteHWCol(\''+classId+'\',\''+hw.sessionDate+'\',\''+hw.type+'\')" '+
+          'title="Xóa bài homework này" '+
+          'style="position:absolute;top:2px;right:2px;background:none;border:none;cursor:pointer;'+
+          'font-size:11px;color:var(--g300);padding:0;line-height:1;opacity:.5" '+
+          'onmouseenter="this.style.opacity=1;this.style.color=\'#dc2626\'" '+
+          'onmouseleave="this.style.opacity=.5;this.style.color=\'var(--g300)\'">🗑</button>'+
       '</th>';
     });
     hwHeaders+='<th style="padding:5px 4px;text-align:center;min-width:52px;background:#f0fdf4;border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:9px;font-weight:700;color:#166534;vertical-align:bottom">Done</th>';
@@ -1832,6 +1906,21 @@ function renderHWTracker(classId){
       if(cell)buildHWCell(cell,classId,s.email,hw,status,sub?sub.note:'');
     });
   });
+}
+
+async function deleteHWCol(classId, sessionDate, type){
+  var typeNames={W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
+  var tname=typeNames[type]||type;
+  var dl=sessionDate?sessionDate.slice(5).replace('-','/'):'';
+  if(!confirm('Xóa homework '+tname+' ngày '+dl+'?\nTất cả dữ liệu submission của bài này cũng bị xóa.')) return;
+  try{
+    var r=await api('deleteHomework',{classId:classId,sessionDate:sessionDate,type:type});
+    if(r.success){
+      toast('Đã xóa homework '+tname+' ('+dl+') ✓','ok');
+      delete hwTrackerCache[classId];
+      loadHWTracker(classId);
+    } else toast('Error: '+r.message,'err');
+  }catch(e){toast('Connection error','err');}
 }
 
 function buildHWCell(cell,classId,email,hw,status,note){
