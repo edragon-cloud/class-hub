@@ -821,7 +821,7 @@ async function doDeleteHWFromSettings(){
     return;
   }
   var typeNames={W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
-  var label=(type?typeNames[type]+' ':'Tất cả skill ')+'ngày '+fmtD(date);
+  var label=(type?typeNames[type]+' ':'Tất cả skill ')+'ngày '+fmtBrit(date);
   if(!confirm('Xóa homework: '+label+' — '+classId+'?\nThao tác này không thể hoàn tác.')) return;
   try{
     var r=await api('deleteHomework',{classId:classId,sessionDate:date,type:type||undefined});
@@ -1002,6 +1002,18 @@ function getWeekDates(offset) {
   return dates;
 }
 function fmtD(d){return d.toISOString().split('T')[0];}
+// ── British date formatter: 'yyyy-MM-dd' → '26-Mar' or '26-Mar-2026'
+function fmtBrit(dateStr, showYear){
+  if(!dateStr||String(dateStr).length<10) return dateStr||'—';
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var s=String(dateStr);
+  var day=parseInt(s.slice(8),10);
+  var mon=parseInt(s.slice(5,7),10)-1;
+  var yr=s.slice(0,4);
+  return day+'-'+months[mon]+(showYear?'-'+yr:'');
+}
+function fmtBritFull(dateStr){return fmtBrit(dateStr,true);}
+
 
 async function loadWeekly() {
   var dates=getWeekDates(weekOffset);
@@ -1159,7 +1171,7 @@ function renderTuitionGrid(classId){
     for(var si=1;si<=8;si++){
       var gIdx=(mo2-1)*8+(si-1);
       var sd=schedDates[gIdx]||'';
-      var dl=sd?fmtD(sd):'';
+      var dl=sd?fmtBrit(sd):'';
       var isToday=sd===today;
       var colStyle=isToday
         ?'background:#fff3cd;border-bottom:3px solid #f59e0b;'
@@ -1419,8 +1431,8 @@ function updateHWSessionInfo(){
   var skillNameMap={'WRITING':'Writing','W':'Writing','SPEAKING':'Speaking','S':'Speaking',
     'LISTENING':'Listening','L':'Listening','READING':'Reading','R':'Reading',
     'VOCABULARY':'Vocabulary','V':'Vocabulary','GRAMMAR':'Grammar','G':'Grammar'};
-  function fmtDL(d){return fmtD(d,true)||'—';}
-  var dateDisp=fmtDFull(date);
+  function fmtDL(d){return fmtBritFull(d)||'—';}
+  var dateDisp=fmtBritFull(date);
   if(isDual){
     var dl1=autoDeadline(classId,date,'R');
     var dl2=autoDeadline(classId,date,'L');
@@ -1571,7 +1583,7 @@ function addHWEntry(){
 
   var schedOpts='<option value="">📅 Xem lịch học…</option>';
   sched.forEach(function(s){
-    var disp=fmtD(s.date);
+    var disp=fmtBrit(s.date);
     var sk=(s.skill||'').toUpperCase().slice(0,1);
     var em=skillEmoji[sk]||'📅';
     var nm=skillName[sk]||s.skill||'';
@@ -1824,8 +1836,8 @@ function renderHWTracker(classId){
       var col=typeColors[hw.type]||'#6b7280';
       var tname=typeNames[hw.type]||hw.type;
       // Format dates as dd/MM
-      var dTaught=hw.sessionDate?fmtD(hw.sessionDate):'';
-      var dDue=hw.deadline?fmtD(hw.deadline):'—';
+      var dTaught=hw.sessionDate?fmtBrit(hw.sessionDate):'';
+      var dDue=hw.deadline?fmtBrit(hw.deadline):'—';
       hwHeaders+='<th style="padding:5px 4px;text-align:center;min-width:80px;background:'+bg2+';border-bottom:2px solid '+col+';vertical-align:bottom;position:relative">'+
         '<div style="font-size:11px;font-weight:800;color:'+col+'">'+tname+'</div>'+
         '<div style="font-size:9px;color:var(--g600);margin-top:2px">📅 '+dTaught+'</div>'+
@@ -1911,7 +1923,7 @@ function renderHWTracker(classId){
 async function deleteHWCol(classId, sessionDate, type){
   var typeNames={W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
   var tname=typeNames[type]||type;
-  var dl=fmtD(sessionDate);
+  var dl=fmtBrit(sessionDate);
   if(!confirm('Xóa homework '+tname+' ngày '+dl+'?\nTất cả dữ liệu submission của bài này cũng bị xóa.')) return;
   try{
     var r=await api('deleteHomework',{classId:classId,sessionDate:sessionDate,type:type});
@@ -2061,7 +2073,7 @@ function renderPart(classId,months,hasRealScores){
     var sessionHeaders='';
     for(var si=0;si<8;si++){
       var d=moDates[si]||'';
-      var dlabel=d?fmtD(d):'-';
+      var dlabel=d?fmtBrit(d):'-';
       sessionHeaders+='<th style="padding:5px 3px;text-align:center;font-size:9px;min-width:40px;background:var(--g100)">'+
         '<div style="font-weight:700;color:var(--g600)">S'+(si+1)+'</div>'+
         '<div style="color:var(--g400)">'+dlabel+'</div></th>';
