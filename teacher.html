@@ -1,7 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<link rel="manifest" href="manifest.json"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="IELTS Hub"/>
+<meta name="theme-color" content="#E01A22"/>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png"/>
+<link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
@@ -559,7 +569,7 @@ textarea.fc{resize:vertical;min-height:60px;}
     <div class="step-panel active" id="step0">
       <div class="fg">
         <label class="fl">Session Date</label>
-        <input type="date" class="fc" id="moDate"/>
+        <input type="date" class="fc" id="moDate" onchange="refreshModalStudents()"/>
       </div>
       <div class="fg">
         <label class="fl">Day Label (e.g. Day 5)</label>
@@ -588,18 +598,15 @@ textarea.fc{resize:vertical;min-height:60px;}
 
     <!-- Step 3: Homework -->
     <div class="step-panel" id="step2">
-      <div id="hwSessionInfo" style="background:var(--g50);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--g600)">
-        Loading session info…
+      <div style="font-size:12px;color:var(--g600);margin-bottom:14px">
+        Giao bài tập cho buổi học này. Để trống nếu không có bài.
       </div>
-      <div class="fg">
-        <label class="fl">Nội dung bài tập <span style="color:var(--g400);font-weight:400">(để trống nếu không có bài)</span></label>
-        <div id="hwContentArea">
-          <textarea class="fc" id="hwContent" placeholder="Mô tả nội dung bài tập…" style="min-height:80px"></textarea>
-        </div>
-      </div>
-      <div style="font-size:11px;color:var(--g400);margin-bottom:12px">
-        💡 Skill & Deadline sẽ tự động lấy từ Schedule của buổi học này.
-      </div>
+
+      <!-- HW entries container -->
+      <div id="hwEntries" style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px"></div>
+
+      <button class="btn btn-g btn-sm" onclick="addHWEntry()" style="margin-bottom:14px">+ Thêm bài tập</button>
+
       <div class="md-act">
         <button class="btn btn-g" onclick="switchStep(1,document.querySelectorAll('.step-tab')[1])">← Back</button>
         <div style="flex:1"></div>
@@ -1428,9 +1435,9 @@ function openFinishFor(classId) {
   document.getElementById('moDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('moDayLabel').value = '';
   document.getElementById('day0Warn').style.display='none';
-  // Reset hwContentArea to default single textarea
-  var hwArea=document.getElementById('hwContentArea');
-  if(hwArea) hwArea.innerHTML='<textarea class="fc" id="hwContent" placeholder="Mô tả nội dung bài tập…" style="min-height:80px;width:100%"></textarea>';
+  // Reset homework entries
+  document.getElementById('hwEntries').innerHTML='';
+  hwEntryCount=0;
   switchStep(0, document.querySelectorAll('.step-tab')[0]);
   refreshModalStudents();
   document.getElementById('moFinish').classList.add('show');
@@ -1439,23 +1446,34 @@ function openFinishFor(classId) {
 function refreshModalStudents(){
   var cls=classData.find(function(c){return c.classId===currentFinishClass;});
   var students=cls?cls.students:[];
+  var date=document.getElementById('moDate').value;
+
+  // Pre-fill attendance from sessDetail cache (existing records for this date)
   document.getElementById('moAttList').innerHTML=students.map(function(s){
+    var cached=tuitionCache[currentFinishClass]||[];
+    var cs=cached.find(function(x){return x.email===s.email;});
+    var existing=(cs&&cs.sessDetail&&cs.sessDetail[date])?cs.sessDetail[date].status:'Present';
+    var opts=['Present','Late','Absent'].map(function(v){
+      var label=v==='Present'?'☑ Present':v==='Late'?'⏲ Late':'✗ Absent';
+      return '<option value="'+v+'"'+(existing===v?' selected':'')+'>'+label+'</option>';
+    }).join('');
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--g50);border-radius:7px;border:1px solid var(--g100)">'+
       '<div><div style="font-size:13px;font-weight:600">'+s.name+'</div>'+
       '<div style="font-size:10px;color:var(--g400)">'+(s.studentId||'')+'</div></div>'+
-      '<select class="asel" id="att-'+s.email.replace(/[@.]/g,'_')+'">'+
-        '<option value="Present">☑ Present</option>'+
-        '<option value="Late">⏲ Late</option>'+
-        '<option value="Absent">✗ Absent</option>'+
-      '</select></div>';
+      '<select class="asel" id="att-'+s.email.replace(/[@.]/g,'_')+'">'+opts+'</select></div>';
   }).join('');
+
+  // Pre-fill participation scores from sessDetail cache
   document.getElementById('moPartList').innerHTML=students.map(function(s){
+    var cached=tuitionCache[currentFinishClass]||[];
+    var cs=cached.find(function(x){return x.email===s.email;});
+    var existingScore=(cs&&cs.sessDetail&&cs.sessDetail[date])?cs.sessDetail[date].score||0:0;
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--g50);border-radius:7px;border:1px solid var(--g100)">'+
       '<div><div style="font-size:13px;font-weight:600">'+s.name+'</div>'+
       '<div style="font-size:10px;color:var(--g400)">'+(s.studentId||'')+'</div></div>'+
       '<div style="display:flex;align-items:center;gap:6px">'+
         '<span style="font-size:11px;color:var(--g400)">Lần PB:</span>'+
-        '<input type="number" min="0" value="0" id="part-'+s.email.replace(/[@.]/g,'_')+'" '+
+        '<input type="number" min="0" value="'+existingScore+'" id="part-'+s.email.replace(/[@.]/g,'_')+'" '+
           'style="width:52px;padding:4px 7px;border:1.5px solid var(--g200);border-radius:6px;font-size:13px;font-weight:600;text-align:center;outline:none;" '+
           'onfocus="this.style.borderColor=\'var(--red)\'" onblur="this.style.borderColor=\'var(--g200)\'"/>'+
       '</div></div>';
@@ -1467,18 +1485,79 @@ function checkDay0(input){
   document.getElementById('day0Warn').style.display=(v==='day0'||v==='0')?'block':'none';
 }
 
+var hwEntryCount=0;
 function addHWEntry(){
   hwEntryCount++;
-  var d=document.createElement('div'); d.className='hw-entry';
+  var id='hwe'+hwEntryCount;
+  var today=new Date().toISOString().split('T')[0];
+
+  // Build deadline options from schedule of current class
+  var skillEmoji={S:'🗣',W:'✍️',L:'🎧',R:'📖',V:'📚',G:'📝'};
+  var skillName={S:'Speaking',W:'Writing',L:'Listening',R:'Reading',V:'Vocab',G:'Grammar'};
+  var sched=(allSchedules[currentFinishClass]||[])
+    .filter(function(s){return s.date>=today;})
+    .slice(0,20); // next 20 sessions
+
+  var deadlineOptions='<option value="">— chọn từ lịch —</option>';
+  sched.forEach(function(s){
+    var d=s.date;
+    var disp=d.slice(8)+'/'+d.slice(5,7); // dd/MM
+    var sk=(s.skill||'').toUpperCase().slice(0,1);
+    var em=skillEmoji[sk]||'📅';
+    var nm=skillName[sk]||s.skill||'';
+    deadlineOptions+='<option value="'+d+'">'+em+' '+disp+(nm?' — '+nm:'')+'</option>';
+  });
+  // Also add manual option
+  deadlineOptions+='<option value="manual">✏️ Nhập tay…</option>';
+
+  var d=document.createElement('div');
+  d.id=id;
+  d.style='background:var(--g50);border-radius:10px;padding:12px 14px;border:1px solid var(--g200);position:relative';
   d.innerHTML=
-    '<select class="fc" style="width:110px;flex-shrink:0"><option value="">Skill</option>'+
-    '<option value="W">Writing</option><option value="L">Listening</option>'+
-    '<option value="S">Speaking</option><option value="V">Vocab</option>'+
-    '<option value="R">Reading</option><option value="G">Grammar</option></select>'+
-    '<input type="text" class="fc" placeholder="Assignment content" style="flex:1"/>'+
-    '<input type="date" class="fc" style="width:130px;flex-shrink:0"/>'+
-    '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--g400);font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0">✕</button>';
+    '<button onclick="document.getElementById(\''+id+'\').remove()" '+
+      'style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--g400);font-size:16px;cursor:pointer;line-height:1">✕</button>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
+      '<div>'+
+        '<label style="font-size:11px;font-weight:600;color:var(--g600);display:block;margin-bottom:4px">Skill</label>'+
+        '<select class="fc hwe-skill" style="width:100%">'+
+          '<option value="">— chọn skill —</option>'+
+          '<option value="S">🗣 Speaking</option>'+
+          '<option value="W">✍️ Writing</option>'+
+          '<option value="L">🎧 Listening</option>'+
+          '<option value="R">📖 Reading</option>'+
+          '<option value="V">📚 Vocabulary</option>'+
+          '<option value="G">📝 Grammar</option>'+
+        '</select>'+
+      '</div>'+
+      '<div>'+
+        '<label style="font-size:11px;font-weight:600;color:var(--g600);display:block;margin-bottom:4px">Ngày giao</label>'+
+        '<input type="date" class="fc hwe-assigned" value="'+today+'" style="width:100%"/>'+
+      '</div>'+
+    '</div>'+
+    '<div style="margin-bottom:8px">'+
+      '<label style="font-size:11px;font-weight:600;color:var(--g600);display:block;margin-bottom:4px">Nội dung bài tập</label>'+
+      '<textarea class="fc hwe-content" placeholder="Mô tả bài tập cụ thể…" style="min-height:60px;width:100%;resize:vertical"></textarea>'+
+    '</div>'+
+    '<div>'+
+      '<label style="font-size:11px;font-weight:600;color:var(--g600);display:block;margin-bottom:4px">📅 Deadline — chọn buổi học tiếp theo</label>'+
+      '<select class="fc hwe-deadline-sel" style="width:100%;margin-bottom:6px" onchange="onDeadlineSelChange(this,\''+id+'\')">'+
+        deadlineOptions+
+      '</select>'+
+      '<input type="date" class="fc hwe-deadline" style="width:100%;display:none" placeholder="Hoặc nhập ngày tay"/>'+
+    '</div>';
   document.getElementById('hwEntries').appendChild(d);
+}
+
+function onDeadlineSelChange(sel, entryId){
+  var entry=document.getElementById(entryId);
+  var manualInput=entry.querySelector('.hwe-deadline');
+  if(sel.value==='manual'){
+    manualInput.style.display='block';
+    manualInput.focus();
+  } else {
+    manualInput.style.display='none';
+    manualInput.value=sel.value; // sync value to hidden input
+  }
 }
 
 async function doFinish(){
@@ -1495,25 +1574,22 @@ async function doFinish(){
     if(sel)attOverrides[s.email]=sel.value;
   });
 
+  // Collect homework from 4-field entries
   var homework=[];
-  var sched=allSchedules[classId]||[];
-  var thisSess=sched.find(function(s){return s.date===date;});
-  var skill=(thisSess?thisSess.skill:'')||'';
-  var isDual=/^(RL|R\+L|R\/L|R&L|LR|L\+R|L\/R|Reading.*Listening|Listening.*Reading)$/i.test(skill.trim());
-  var skillMap={'WRITING':'W','SPEAKING':'S','LISTENING':'L','READING':'R','GRAMMAR':'G','VOCABULARY':'V',
-    'W':'W','S':'S','L':'L','R':'R','G':'G','V':'V'};
-  if(isDual){
-    var cR=document.getElementById('hwContentR');
-    var cL=document.getElementById('hwContentL');
-    if(cR&&cR.value.trim()) homework.push({type:'R',content:cR.value.trim(),deadline:autoDeadline(classId,date,'R')});
-    if(cL&&cL.value.trim()) homework.push({type:'L',content:cL.value.trim(),deadline:autoDeadline(classId,date,'L')});
-  } else {
-    var hwContent=document.getElementById('hwContent');
-    if(hwContent&&hwContent.value.trim()){
-      var typeCode=skillMap[skill.toUpperCase()]||'G';
-      homework.push({type:typeCode,content:hwContent.value.trim(),deadline:autoDeadline(classId,date,skill)});
+  document.querySelectorAll('#hwEntries > div').forEach(function(entry){
+    var skill=(entry.querySelector('.hwe-skill')||{}).value||'';
+    var content=((entry.querySelector('.hwe-content')||{}).value||'').trim();
+    var assignedDate=(entry.querySelector('.hwe-assigned')||{}).value||date;
+    // Deadline: from select (if not 'manual') or from manual input
+    var dlSel=entry.querySelector('.hwe-deadline-sel');
+    var dlManual=entry.querySelector('.hwe-deadline');
+    var deadline='';
+    if(dlSel&&dlSel.value&&dlSel.value!=='manual') deadline=dlSel.value;
+    else if(dlManual) deadline=dlManual.value||'';
+    if(content && skill){
+      homework.push({type:skill, content:content, sessionDate:assignedDate, deadline:deadline});
     }
-  }
+  });
 
   try{
     var r=await api('finishSession',{classId:classId,date:date,dayLabel:dayLabel,homework:homework,attOverrides:attOverrides});
@@ -2308,6 +2384,15 @@ document.querySelectorAll('.mo').forEach(function(mo){
 });
 
 init();
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js')
+      .then(function(r){ console.log('SW registered'); })
+      .catch(function(e){ console.log('SW error', e); });
+  });
+}
 </script>
 </body>
 </html>
