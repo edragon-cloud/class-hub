@@ -462,9 +462,10 @@ function renderHomework() {
     // Preserve line breaks from teacher input
     const contentHtml = (h.content||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 
-    return `<div class="hw-card ${h.type||'W'}" style="${st==='Done'?'opacity:.65;border-left-color:#ccc':''}">
+    return `<div class="hw-card ${h.type||'W'}" style="${st==='Done'?'opacity:.65;border-left-color:#ccc':''}${h.isExtra?';border-left-color:#eab308;background:linear-gradient(135deg,#fffef0 0%,white 60%)':''}">
       <div class="hw-top">
         <span class="hw-badge hb-${h.type||'W'}">${typeNames[h.type]||h.type}</span>
+        ${h.isExtra?'<span style="font-size:10px;background:#fef9c3;color:#854d0e;border-radius:5px;padding:2px 7px;font-weight:700">⭐ Extra</span>':''}
         <span class="hw-countdown ${d<0&&st!=='Done'?'bad':urgent&&st!=='Done'?'warn':'good'}">${st==='Done'?'✓ Done':ct}</span>
       </div>
       <div class="hw-content" style="white-space:pre-wrap;word-break:break-word">${contentHtml}</div>
@@ -775,6 +776,9 @@ init();
     </button>
     <button class="mnb" id="mnb-settings" onclick="mobNav('settings',this)">
       <span class="mi">⚙️</span><span class="ml">Settings</span>
+    </button>
+    <button class="mnb" onclick="if(confirm('Sign out?'))doLogout()" style="color:rgba(255,100,100,.7)">
+      <span class="mi">🚪</span><span class="ml">Sign Out</span>
     </button>
   </div>
 </nav>
