@@ -483,7 +483,8 @@ textarea.fc{resize:vertical;min-height:60px;}
     <div id="sec-diligence" class="sec">
       <div class="sec-hd">
         <div><div class="sec-title">Diligent Report</div>
-        <div class="sec-sub">Monthly awards · 3 criteria: Tuition ✓ · Full homework ✓ · Full attendance ✓</div></div>
+        <div class="sec-sub">Monthly awards · 3 criteria: Tuition ✓ · Full homework ✓ · 0 Absent · 0 Late ✓</div></div>
+        <a href="random.html" target="_blank" class="btn btn-r btn-sm" style="text-decoration:none;white-space:nowrap">🎰 Random Draw</a>
       </div>
       <div class="ctabs" id="diligenceTabs"><button class="ctab active" onclick="filterDiligence('all',this)">All Classes</button></div>
       <div id="diligenceContent"><p style="padding:40px;text-align:center;color:var(--g400)">Select a class to view rewards.</p></div>
@@ -2166,27 +2167,24 @@ async function loadPart(classId){
 }
 
 function renderPartFromCache(classId){
-  // Build participation view from sessDetail (has real per-session scores)
   var students=tuitionCache[classId]||[];
   var schedDates=(allSchedules[classId]||[])
     .filter(function(s){return s.date&&s.dayLabel.toLowerCase().replace(/ /g,'').replace('day','')!=='0';})
     .map(function(s){return s.date;});
   var maxMonths=Math.ceil(schedDates.length/8)||1;
-  // Build months
   var months=[];
   for(var mo=0;mo<maxMonths;mo++){
     var moDates=schedDates.slice(mo*8,(mo+1)*8);
     var moStudents=students.map(function(s){
       var sessScores={};
-      var total=0,count=0;
+      var total=0;
       moDates.forEach(function(d){
         var rec=s.sessDetail&&s.sessDetail[d];
         var score=rec?Number(rec.score)||0:null;
         sessScores[d]=score;
-        if(score!==null&&score>0){total+=score;count++;}
+        if(score!==null&&score>0) total+=score;
       });
-      return {name:s.name,email:s.email,sessScores:sessScores,
-        avg:count>0?Math.round(total/count*10)/10:0};
+      return {name:s.name,email:s.email,sessScores:sessScores,total:total};
     });
     months.push({month:mo+1,moDates:moDates,students:moStudents});
   }
@@ -2194,7 +2192,6 @@ function renderPartFromCache(classId){
 }
 
 function renderPartFallback(classId,rewardsMonths){
-  // Convert getRewards months to renderPart format
   var schedDates=(allSchedules[classId]||[])
     .filter(function(s){return s.date&&s.dayLabel.toLowerCase().replace(/ /g,'').replace('day','')!=='0';})
     .map(function(s){return s.date;});
@@ -2204,7 +2201,7 @@ function renderPartFallback(classId,rewardsMonths){
     var moStudents=mo.students.map(function(s){
       var sessScores={};
       moDates.forEach(function(d){sessScores[d]=null;});
-      return {name:s.name,email:s.email,sessScores:sessScores,avg:s.avgScore||0};
+      return {name:s.name,email:s.email,sessScores:sessScores,total:s.avgScore||0};
     });
     return {month:mo.month,moDates:moDates,students:moStudents};
   });
@@ -2220,8 +2217,8 @@ function renderPart(classId,months,hasRealScores){
 
   var html=months.map(function(mo){
     var moDates=mo.moDates||[];
-    var topAvg=0;
-    mo.students.forEach(function(s){if((s.avg||0)>topAvg)topAvg=s.avg||0;});
+    var topTotal=0;
+    mo.students.forEach(function(s){if((s.total||0)>topTotal)topTotal=s.total||0;});
 
     var sessionHeaders='';
     for(var si=0;si<8;si++){
@@ -2232,7 +2229,10 @@ function renderPart(classId,months,hasRealScores){
         '<div style="color:var(--g400)">'+dlabel+'</div></th>';
     }
 
-    var rows=mo.students.map(function(s){
+    // Sort by total descending
+    var sorted=[].concat(mo.students).sort(function(a,b){return (b.total||0)-(a.total||0);});
+
+    var rows=sorted.map(function(s){
       var sessCells='';
       for(var si=0;si<8;si++){
         var d=moDates[si]||'';
@@ -2245,14 +2245,14 @@ function renderPart(classId,months,hasRealScores){
           'display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;'+
           'color:'+cellColor+'">'+(d?(hasScore?score:'—'):'')+'</div></td>';
       }
-      var isTop=s.avg>0&&s.avg===topAvg;
+      var isTop=s.total>0&&s.total===topTotal;
       return '<tr>'+
         '<td style="padding:8px 13px;border-bottom:1px solid var(--g100);position:sticky;left:0;background:white;z-index:1;min-width:150px">'+
           '<div style="font-size:13px;font-weight:600">'+s.name+'</div>'+
         '</td>'+
         sessCells+
-        '<td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--g100);font-weight:800;font-family:var(--serif);font-size:16px;color:'+(s.avg>0?'var(--red)':'var(--g300)')+'">'+
-          (s.avg>0?s.avg:'—')+'</td>'+
+        '<td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--g100);font-weight:800;font-family:var(--serif);font-size:18px;color:'+(s.total>0?'var(--red)':'var(--g300)')+'">'+
+          (s.total>0?s.total:'—')+'</td>'+
         '<td style="padding:8px 10px;border-bottom:1px solid var(--g100)">'+
           (isTop?'<span class="badge bstar">⭐ Top</span>':'')+'</td>'+
       '</tr>';
@@ -2264,7 +2264,7 @@ function renderPart(classId,months,hasRealScores){
         '<thead><tr>'+
           '<th style="padding:8px 13px;background:var(--g900);color:white;position:sticky;left:0;z-index:2;min-width:150px">Student</th>'+
           sessionHeaders+
-          '<th style="padding:8px 10px;background:var(--g900);color:white;min-width:50px;text-align:center">Avg</th>'+
+          '<th style="padding:8px 10px;background:var(--g900);color:white;min-width:60px;text-align:center">Total</th>'+
           '<th style="padding:8px 10px;background:var(--g900);color:white;min-width:65px">Award</th>'+
         '</tr></thead>'+
         '<tbody>'+rows+'</tbody>'+
@@ -2312,34 +2312,42 @@ async function loadDiligence(classId){
   }
   el.innerHTML='<p style="padding:40px;text-align:center;color:var(--g400)">Loading…</p>';
   try{
-    var r=await api('getRewards',{classId:classId});
-    if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
-    el.innerHTML=r.months.map(function(mo){
-      var sorted=[].concat(mo.students).sort(function(a,b){return b.diligent-a.diligent||b.avgScore-a.avgScore;});
-      var eligible=sorted.filter(function(s){return s.diligent;});
+    var r2=await api('getRewards',{classId:classId});
+    if(!r2.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r2.message+'</p>';return;}
+    el.innerHTML=r2.months.map(function(mo){
+      var sessCount=mo.dates.length;
+      // Diligent = 0 absent + 0 late + full HW (hwDone>=hwDue, hwDue>0) + paid tuition
+      mo.students.forEach(function(s){
+        s.diligent = s.absent===0 && s.late===0 && s.tuitionPaid && s.hwDue>0 && s.hwDone>=s.hwDue;
+      });
+      var eligible=mo.students.filter(function(s){return s.diligent;});
+      // Sort: diligent first, then by present desc
+      var sorted=[].concat(mo.students).sort(function(a,b){
+        if(a.diligent!==b.diligent) return a.diligent?-1:1;
+        return b.present-a.present;
+      });
       return '<div class="card">'+
-        '<div class="ch"><div class="ct">Month '+mo.month+'</div><span style="font-size:12px;color:var(--g400)">'+mo.dates.length+' sessions</span></div>'+
+        '<div class="ch"><div class="ct">Month '+mo.month+'</div>'+
+        '<div style="display:flex;align-items:center;gap:10px">'+
+          '<span style="font-size:12px;color:var(--g400)">'+sessCount+' sessions</span>'+
+          (eligible.length>0?'<button class="btn btn-r btn-sm" onclick="openSpin(\''+classId+'\','+mo.month+')">🎰 Random Draw ('+eligible.length+')</button>':'')  +
+        '</div></div>'+
         '<div class="rcard-wrap">'+
-          (sorted[0]?'<div class="rcard rcard-gold"><div class="rcard-lbl">🏆 Most Diligent #1</div><div class="rcard-name">'+sorted[0].name+'</div><div class="rcard-sub">'+sorted[0].present+'P · '+sorted[0].late+'L · '+sorted[0].absent+'A · Avg '+sorted[0].avgScore+'</div></div>':'')+
-          (sorted[1]?'<div class="rcard rcard-silver"><div class="rcard-lbl">🥈 Most Diligent #2</div><div class="rcard-name">'+sorted[1].name+'</div><div class="rcard-sub">'+sorted[1].present+'P · '+sorted[1].late+'L · '+sorted[1].absent+'A</div></div>':'')+
-          '['.slice(0,-1)+
-          (eligible.length>2?
-            '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-width:150px;gap:8px">'+
-              '<div style="font-size:12px;color:var(--g600);font-weight:600">'+eligible.length+' eligible → spin for 2 winners</div>'+
-              '<button class="btn btn-r btn-sm" onclick="openSpin(\''+classId+'\','+mo.month+')">🎰 Random Draw</button>'+
-            '</div>'
-          :'')+
+          (eligible[0]?'<div class="rcard rcard-gold"><div class="rcard-lbl">🏆 Most Diligent #1</div><div class="rcard-name">'+eligible[0].name+'</div><div class="rcard-sub">'+eligible[0].present+'P · 0L · 0A · HW '+eligible[0].hwDone+'/'+eligible[0].hwDue+' · Paid</div></div>':'')+
+          (eligible[1]?'<div class="rcard rcard-silver"><div class="rcard-lbl">🥈 Most Diligent #2</div><div class="rcard-name">'+eligible[1].name+'</div><div class="rcard-sub">'+eligible[1].present+'P · 0L · 0A · HW '+eligible[1].hwDone+'/'+eligible[1].hwDue+' · Paid</div></div>':'')+
         '</div>'+
         '<div class="tw"><table>'+
-          '<thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Late</th><th>HW</th><th>Avg Score</th><th>Tuition</th><th>Diligent?</th></tr></thead>'+
+          '<thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Late</th><th>HW</th><th>Tuition</th><th>Diligent?</th></tr></thead>'+
           '<tbody>'+sorted.map(function(s){
+            var hwBadge=s.hwDue>0
+              ?'<span class="badge '+(s.hwDone>=s.hwDue?'bp':'ba')+'">'+s.hwDone+'/'+s.hwDue+'</span>'
+              :'<span style="color:var(--g400)">—</span>';
             return '<tr>'+
               '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><strong>'+s.name+'</strong></td>'+
               '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span class="badge bp">'+s.present+'</span></td>'+
-              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span class="badge ba">'+s.absent+'</span></td>'+
-              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span class="badge bl">'+s.late+'</span></td>'+
-              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span class="badge '+(s.hwDue>0&&s.hwDone>=s.hwDue?'bp':'bunpaid')+'">'+(s.hwDue>0?(s.hwDone+'/'+s.hwDue):'—')+'</span></td>'+
-              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100);font-weight:600">'+(s.avgScore>0?s.avgScore+'/10':'—')+'</td>'+
+              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span class="badge '+(s.absent>0?'ba':'bp')+'">'+s.absent+'</span></td>'+
+              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span class="badge '+(s.late>0?'bl':'bp')+'">'+s.late+'</span></td>'+
+              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)">'+hwBadge+'</td>'+
               '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)">'+(s.tuitionPaid?'<span class="badge bpaid">✓ Paid</span>':'<span class="badge bunpaid">Unpaid</span>')+'</td>'+
               '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)">'+(s.diligent?'<span class="badge bstar">⭐</span>':'—')+'</td>'+
             '</tr>';
@@ -2350,15 +2358,16 @@ async function loadDiligence(classId){
 
 // ─── Random Spin
 function openSpin(classId, month) {
-  // Get diligent students from cached data
-  // We'll pull from what's rendered (simple approach)
   spinCandidates = [];
-  // Find from cached rewards data - need to re-query or use last known
   api('getRewards',{classId:classId}).then(function(r){
     if(!r.success)return;
     var mo=r.months.find(function(m){return m.month===month;});
     if(!mo)return;
-    spinCandidates=mo.students.filter(function(s){return s.diligent;}).map(function(s){return s.name;});
+    // Use corrected diligent criteria
+    spinCandidates=mo.students.filter(function(s){
+      return s.absent===0 && s.late===0 && s.tuitionPaid && s.hwDue>0 && s.hwDone>=s.hwDue;
+    }).map(function(s){return s.name;});
+    spinWinners=[];
     document.getElementById('spinCandidates').innerHTML=
       '<div style="font-size:12px;font-weight:600;color:var(--g600);margin-bottom:6px">'+spinCandidates.length+' eligible students:</div>'+
       spinCandidates.map(function(n){return '<span class="badge bp" style="margin:2px">'+n+'</span>';}).join('');
