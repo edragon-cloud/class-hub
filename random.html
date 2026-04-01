@@ -56,6 +56,10 @@ button{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:
 /* EMPTY */
 .empty{padding:80px 24px;text-align:center;color:rgba(255,255,255,.25);font-size:15px;line-height:1.8;}
 .loading{padding:60px;text-align:center;color:rgba(255,255,255,.35);font-size:14px;}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.spinner{display:inline-block;font-size:28px;animation:spin 1s linear infinite;}
+.pulse{animation:pulse 1.5s ease-in-out infinite;}
 </style>
 </head>
 <body>
@@ -106,7 +110,7 @@ window.addEventListener('load', async function(){
 
   // Load classes
   var selClass=document.getElementById('selClass');
-  selClass.innerHTML='<option value="">Loading…</option>';
+  selClass.innerHTML='<option value="">&#9203; Loading…</option>';
   try{
     var r=await gasCall('getClassList');
     selClass.innerHTML='<option value="">— Class —</option>';
@@ -133,7 +137,7 @@ async function onClassChange(){
 
 async function loadMonths(classId, autoMonth){
   var sel=document.getElementById('selMonth');
-  sel.innerHTML='<option value="">Loading…</option>';
+  sel.innerHTML='<option value="">&#9203; Loading…</option>';
   try{
     var r=await gasCall('getRewards',{classId:classId});
     sel.innerHTML='<option value="">— Month —</option>';
@@ -163,7 +167,7 @@ async function loadCandidates(){
     wall.innerHTML='<div class="empty">Please select a class and month.</div>';
     return;
   }
-  wall.innerHTML='<div class="loading">Loading eligible students…</div>';
+  wall.innerHTML='<div class="loading"><div class="spinner">&#9203;</div><div style="margin-top:14px" class="pulse">Loading eligible students…</div></div>';
   document.getElementById('statusBar').textContent='';
 
   try{

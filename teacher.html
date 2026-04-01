@@ -159,6 +159,7 @@ textarea.fc{resize:vertical;min-height:60px;}
 .md-sub{color:var(--g400);font-size:12.5px;margin-bottom:18px;}
 .md-act{display:flex;gap:8px;margin-top:4px;}
 /* ═══════════════════════════════════════ TOAST */
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .toast{
   position:fixed;bottom:20px;right:20px;z-index:999;
   background:var(--g900);color:white;padding:10px 16px;
@@ -415,11 +416,20 @@ textarea.fc{resize:vertical;min-height:60px;}
           <div class="ct" id="ovTitle">All Students</div>
           <span style="font-size:12px;color:var(--g400)" id="ovCount"></span>
         </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 18px 12px;align-items:center">
+          <span style="font-size:11px;color:var(--g400);font-weight:600">Sort:</span>
+          <button class="btn btn-g btn-sm" onclick="sortOverview('id')">🔢 ID</button>
+          <button class="btn btn-g btn-sm" onclick="sortOverview('name')">🔤 Name</button>
+          <button class="btn btn-g btn-sm" onclick="sortOverview('class')">🏫 Class</button>
+          <button class="btn btn-g btn-sm" onclick="sortOverview('present')">✅ Present</button>
+          <button class="btn btn-g btn-sm" onclick="sortOverview('absent')">❌ Absent</button>
+          <button class="btn btn-g btn-sm" onclick="sortOverview('month')">📅 Month</button>
+        </div>
         <div class="tw"><table>
           <thead><tr>
             <th>#</th><th>Student ID</th><th>Full Name</th><th>Class</th>
             <th>Tuition Paid</th><th>Current Month</th>
-            <th>Present</th><th>Late</th><th>Absent</th><th></th>
+            <th>✅ Present</th><th>⏱ Late</th><th>❌ Absent</th><th></th>
           </tr></thead>
           <tbody id="ovBody"><tr><td colspan="10" style="text-align:center;padding:40px;color:var(--g400)">Loading…</td></tr></tbody>
         </table></div>
@@ -1000,19 +1010,43 @@ function getLevelClass(classId) {
   return 'lvl-ge';
 }
 
+var _ovSortKey='class', _ovSortDir=1, _ovFilterClass='all';
+
+function sortOverview(key){
+  if(_ovSortKey===key) _ovSortDir*=-1; else {_ovSortKey=key;_ovSortDir=1;}
+  renderOverview(_ovFilterClass);
+}
+
 function renderOverview(filterClass) {
+  _ovFilterClass=filterClass||'all';
   var all = [];
   classData.forEach(function(cls){
     cls.students.forEach(function(s){
       all.push(Object.assign({},s,{classId:cls.classId}));
     });
   });
-  var rows = filterClass && filterClass!=='all'
-    ? all.filter(function(s){return s.classId===filterClass;})
+  var rows = _ovFilterClass && _ovFilterClass!=='all'
+    ? all.filter(function(s){return s.classId===_ovFilterClass;})
     : all;
 
+  // Sort
+  rows.sort(function(a,b){
+    var av,bv;
+    if(_ovSortKey==='id'){av=a.studentId||'';bv=b.studentId||'';}
+    else if(_ovSortKey==='name'){av=a.name||'';bv=b.name||'';}
+    else if(_ovSortKey==='class'){av=a.classId||'';bv=b.classId||'';}
+    else if(_ovSortKey==='present'){av=a.present||0;bv=b.present||0;return _ovSortDir*(bv-av);}
+    else if(_ovSortKey==='absent'){av=a.absent||0;bv=b.absent||0;return _ovSortDir*(bv-av);}
+    else if(_ovSortKey==='month'){
+      av=(a.monthsUsed||0)*8+(a.sessInCycle||0);
+      bv=(b.monthsUsed||0)*8+(b.sessInCycle||0);
+      return _ovSortDir*(bv-av);
+    }
+    if(av<bv)return -1*_ovSortDir; if(av>bv)return 1*_ovSortDir; return 0;
+  });
+
   document.getElementById('ovTitle').textContent =
-    filterClass && filterClass!=='all' ? filterClass : 'All Students';
+    _ovFilterClass && _ovFilterClass!=='all' ? _ovFilterClass : 'All Students';
   document.getElementById('ovCount').textContent = rows.length+' student(s)';
 
   var levelShortMap = {ie:'IE',ge:'GE',te:'TE',ki:'KI',kd:'KD'};
@@ -1025,7 +1059,7 @@ function renderOverview(filterClass) {
     var cachedStudents = tuitionCache[s.classId]||[];
     var cs = cachedStudents.find(function(x){return x.email===s.email;});
     if(cs && cs.monthPayments) paidCount = Object.keys(cs.monthPayments).length;
-    var unpaid = curMonth - paidCount;
+    var unpaid = Math.max(0, curMonth - paidCount - (s.sessInCycle>0?1:0));
     var paidLabel = paidCount > 0
       ? '<span style="font-weight:700;color:#16a34a">'+paidCount+'</span><span style="color:var(--g400);font-size:11px"> months</span>'
         + (unpaid>0 ? ' <span style="font-size:11px;color:#dc2626">('+unpaid+' unpaid)</span>' : '')
@@ -1043,7 +1077,7 @@ function renderOverview(filterClass) {
       '<td><span class="badge ba">'+s.absent+'</span></td>'+
       '<td><button class="btn btn-g btn-sm" onclick="openStudentDetail(\''+s.classId+'\',\''+s.email+'\')">View</button></td>'+
     '</tr>';
-  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--g400)">No students</td></tr>';
+  }).join('') || '<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--g400)">No students</td></tr>';
 }
 
 async function openStudentDetail(classId, email) {
@@ -2320,6 +2354,8 @@ function filterDiligence(classId,btn){
 }
 
 var _diligenceReqId=0;
+var _diligenceCache={};  // classId → months data
+
 async function loadDiligence(classId){
   var el=document.getElementById('diligenceContent');
   if(classId==='all'){
@@ -2338,53 +2374,63 @@ async function loadDiligence(classId){
   }
   // Cancel any previous pending request
   var myReqId=++_diligenceReqId;
-  el.innerHTML='<p style="padding:40px;text-align:center;color:var(--g400)">Loading…</p>';
+  // Use cache if available
+  if(_diligenceCache[classId]){
+    renderDiligence(classId, _diligenceCache[classId]);
+    return;
+  }
+  el.innerHTML='<div style="padding:60px;text-align:center;color:var(--g400)">'+
+    '<div style="font-size:28px;animation:spin 1s linear infinite;display:inline-block">⏳</div>'+
+    '<div style="margin-top:12px;font-size:13px">Loading diligent report…</div></div>';
   try{
     var r2=await api('getRewards',{classId:classId});
-    // Ignore stale responses
     if(myReqId!==_diligenceReqId) return;
     if(!r2.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r2.message+'</p>';return;}
     if(!r2.months||!r2.months.length){el.innerHTML='<p style="padding:40px;text-align:center;color:var(--g400)">No data yet — complete at least 1 session first.</p>';return;}
-    el.innerHTML=r2.months.map(function(mo){
-      var sessCount=mo.dates.length;
-      // Diligent = 0 absent + 0 late + full HW (hwDone>=hwDue, hwDue>0) + paid tuition
-      mo.students.forEach(function(s){
-        s.diligent = s.absent===0 && s.late===0 && s.tuitionPaid && s.hwDue>0 && s.hwDone>=s.hwDue;
-      });
-      var eligible=mo.students.filter(function(s){return s.diligent;});
-      // Sort: diligent first, then by present desc
-      var sorted=[].concat(mo.students).sort(function(a,b){
-        if(a.diligent!==b.diligent) return a.diligent?-1:1;
-        return b.present-a.present;
-      });
-      return '<div class="card">'+
-        '<div class="ch"><div class="ct">Month '+mo.month+'</div>'+
-        '<div style="display:flex;align-items:center;gap:10px">'+
-          '<span style="font-size:12px;color:var(--g400)">'+sessCount+' sessions</span>'+
-          (eligible.length>0?'<a href="random.html?class='+encodeURIComponent(classId)+'&month='+mo.month+'" target="_blank" class="btn btn-r btn-sm" style="text-decoration:none">🎰 Random Draw ('+eligible.length+')</a>':'')  +
-        '</div></div>'+
-        '<div class="rcard-wrap">'+
-          (eligible[0]?'<div class="rcard rcard-gold"><div class="rcard-lbl">🏆 Most Diligent #1</div><div class="rcard-name">'+eligible[0].name+'</div><div class="rcard-sub">'+eligible[0].present+'P · 0L · 0A · HW '+eligible[0].hwDone+'/'+eligible[0].hwDue+' · Paid</div></div>':'')+
-          (eligible[1]?'<div class="rcard rcard-silver"><div class="rcard-lbl">🥈 Most Diligent #2</div><div class="rcard-name">'+eligible[1].name+'</div><div class="rcard-sub">'+eligible[1].present+'P · 0L · 0A · HW '+eligible[1].hwDone+'/'+eligible[1].hwDue+' · Paid</div></div>':'')+
-        '</div>'+
-        '<div class="tw"><table>'+
-          '<thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Late</th><th>HW</th><th>Tuition</th><th>Diligent?</th></tr></thead>'+
-          '<tbody>'+sorted.map(function(s){
-            var hwBadge=s.hwDue>0
-              ?'<span class="badge '+(s.hwDone>=s.hwDue?'bp':'ba')+'">'+s.hwDone+'/'+s.hwDue+'</span>'
-              :'<span style="color:var(--g400)">—</span>';
-            return '<tr>'+
-              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><strong>'+s.name+'</strong></td>'+
-              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span class="badge bp">'+s.present+'</span></td>'+
-              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span class="badge '+(s.absent>0?'ba':'bp')+'">'+s.absent+'</span></td>'+
-              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span class="badge '+(s.late>0?'bl':'bp')+'">'+s.late+'</span></td>'+
-              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)">'+hwBadge+'</td>'+
-              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)">'+(s.tuitionPaid?'<span class="badge bpaid">✓ Paid</span>':'<span class="badge bunpaid">Unpaid</span>')+'</td>'+
-              '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)">'+(s.diligent?'<span class="badge bstar">⭐</span>':'—')+'</td>'+
-            '</tr>';
-          }).join('')+'</tbody></table></div></div>';
-    }).join('')||'<p style="padding:40px;text-align:center;color:var(--g400)">No data yet.</p>';
+    _diligenceCache[classId]=r2.months;
+    renderDiligence(classId, r2.months);
   }catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+e.message+'<br><small>Open console for details.</small></p>';}
+}
+
+function renderDiligence(classId, months){
+  var el=document.getElementById('diligenceContent');
+  el.innerHTML=months.map(function(mo){
+    var sessCount=mo.dates.length;
+    mo.students.forEach(function(s){
+      s.diligent=s.absent===0&&s.late===0&&s.tuitionPaid&&s.hwDue>0&&s.hwDone>=s.hwDue;
+    });
+    var eligible=mo.students.filter(function(s){return s.diligent;});
+    var sorted=[].concat(mo.students).sort(function(a,b){
+      if(a.diligent!==b.diligent)return a.diligent?-1:1;
+      return b.present-a.present;
+    });
+    return '<div class="card">'+
+      '<div class="ch"><div class="ct">Month '+mo.month+'</div>'+
+      '<div style="display:flex;align-items:center;gap:10px">'+
+        '<span style="font-size:12px;color:var(--g400)">'+sessCount+' sessions</span>'+
+        (eligible.length>0?'<a href="random.html?class='+encodeURIComponent(classId)+'&month='+mo.month+'" target="_blank" class="btn btn-r btn-sm" style="text-decoration:none">🎰 Random Draw ('+eligible.length+')</a>':'')+
+      '</div></div>'+
+      '<div class="rcard-wrap">'+
+        (eligible[0]?'<div class="rcard rcard-gold"><div class="rcard-lbl">🏆 Most Diligent #1</div><div class="rcard-name">'+eligible[0].name+'</div><div class="rcard-sub">'+eligible[0].present+'P · 0L · 0A · HW '+eligible[0].hwDone+'/'+eligible[0].hwDue+' · Paid</div></div>':'')+
+        (eligible[1]?'<div class="rcard rcard-silver"><div class="rcard-lbl">🥈 Most Diligent #2</div><div class="rcard-name">'+eligible[1].name+'</div><div class="rcard-sub">'+eligible[1].present+'P · 0L · 0A · HW '+eligible[1].hwDone+'/'+eligible[1].hwDue+' · Paid</div></div>':'')+
+      '</div>'+
+      '<div class="tw"><table>'+
+        '<thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Late</th><th>HW</th><th>Tuition</th><th>Diligent?</th></tr></thead>'+
+        '<tbody>'+sorted.map(function(s){
+          var hwBadge=s.hwDue>0
+            ?'<span class="badge '+(s.hwDone>=s.hwDue?'bp':'ba')+'">'+s.hwDone+'/'+s.hwDue+'</span>'
+            :'<span style="color:var(--g400)">—</span>';
+          return '<tr>'+
+            '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><strong>'+s.name+'</strong></td>'+
+            '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span class="badge bp">'+s.present+'</span></td>'+
+            '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span class="badge '+(s.absent>0?'ba':'bp')+'">'+s.absent+'</span></td>'+
+            '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)"><span class="badge '+(s.late>0?'bl':'bp')+'">'+s.late+'</span></td>'+
+            '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)">'+hwBadge+'</td>'+
+            '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)">'+(s.tuitionPaid?'<span class="badge bpaid">✓ Paid</span>':'<span class="badge bunpaid">Unpaid</span>')+'</td>'+
+            '<td style="padding:8px 12px;border-bottom:1px solid var(--g100)">'+(s.diligent?'<span class="badge bstar">⭐</span>':'—')+'</td>'+
+          '</tr>';
+        }).join('')+'</tbody></table></div></div>';
+  }).join('')||'<p style="padding:40px;text-align:center;color:var(--g400)">No data yet.</p>';
 }
 
 // ─── Random Spin
