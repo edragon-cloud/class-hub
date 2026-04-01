@@ -736,15 +736,40 @@ textarea.fc{resize:vertical;min-height:60px;}
 
 <!-- SPINNER (Diligence) -->
 <div class="mo" id="moSpin">
-  <div class="md" style="text-align:center;max-width:380px">
-    <div class="md-h" style="text-align:left">🎰 Random Winner</div>
-    <div class="md-sub" style="text-align:left">Eligible candidates have all 3 criteria met.</div>
-    <div id="spinCandidates" style="margin-bottom:16px;text-align:left"></div>
-    <div class="spin-wrap">
-      <button class="spin-btn" onclick="doSpin()">🎯</button>
-      <div class="spin-result" id="spinResult"></div>
+  <div class="md" style="max-width:560px;width:95vw">
+    <div class="md-h">🎰 Random Draw</div>
+    <div class="md-sub" id="spinSubtitle">Eligible diligent students this month</div>
+
+    <!-- Name wall -->
+    <div id="spinWall" style="display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 10px;min-height:48px"></div>
+
+    <!-- Add extra name -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+      <input type="text" id="spinAddName" class="fc" placeholder="+ Add a name manually…"
+        style="flex:1;font-size:13px" onkeydown="if(event.key==='Enter')addSpinName()"/>
+      <button class="btn btn-g btn-sm" onclick="addSpinName()">+ Add</button>
     </div>
-    <button class="btn btn-g" onclick="closeMo('moSpin')" style="margin-top:8px">Close</button>
+
+    <!-- Spin area -->
+    <div style="text-align:center;padding:12px 0">
+      <div id="spinDisplay" style="
+        font-family:var(--serif);font-size:28px;font-weight:900;color:var(--red);
+        min-height:44px;letter-spacing:.5px;transition:all .1s;
+        background:var(--g50);border-radius:12px;padding:10px 20px;
+        border:2px solid var(--g200);margin-bottom:12px">
+        —
+      </div>
+      <button class="spin-btn" onclick="doSpin()" id="btnDoSpin" title="Spin!">🎯</button>
+    </div>
+
+    <!-- Winners log -->
+    <div id="spinWinLog" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;min-height:28px"></div>
+
+    <div class="md-act" style="margin-top:14px">
+      <button class="btn btn-g btn-sm" onclick="resetSpin()">↺ Reset</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-g" onclick="closeMo('moSpin')">Close</button>
+    </div>
   </div>
 </div>
 
@@ -2294,6 +2319,7 @@ function filterDiligence(classId,btn){
   loadDiligence(classId);
 }
 
+var _diligenceReqId=0;
 async function loadDiligence(classId){
   var el=document.getElementById('diligenceContent');
   if(classId==='all'){
@@ -2310,10 +2336,15 @@ async function loadDiligence(classId){
       '</tr>';}).join('')+'</tbody></table></div></div>';
     return;
   }
+  // Cancel any previous pending request
+  var myReqId=++_diligenceReqId;
   el.innerHTML='<p style="padding:40px;text-align:center;color:var(--g400)">Loading…</p>';
   try{
     var r2=await api('getRewards',{classId:classId});
+    // Ignore stale responses
+    if(myReqId!==_diligenceReqId) return;
     if(!r2.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r2.message+'</p>';return;}
+    if(!r2.months||!r2.months.length){el.innerHTML='<p style="padding:40px;text-align:center;color:var(--g400)">No data yet — complete at least 1 session first.</p>';return;}
     el.innerHTML=r2.months.map(function(mo){
       var sessCount=mo.dates.length;
       // Diligent = 0 absent + 0 late + full HW (hwDone>=hwDue, hwDue>0) + paid tuition
@@ -2330,7 +2361,7 @@ async function loadDiligence(classId){
         '<div class="ch"><div class="ct">Month '+mo.month+'</div>'+
         '<div style="display:flex;align-items:center;gap:10px">'+
           '<span style="font-size:12px;color:var(--g400)">'+sessCount+' sessions</span>'+
-          (eligible.length>0?'<button class="btn btn-r btn-sm" onclick="openSpin(\''+classId+'\','+mo.month+')">🎰 Random Draw ('+eligible.length+')</button>':'')  +
+          (eligible.length>0?'<a href="random.html?class='+encodeURIComponent(classId)+'&month='+mo.month+'" target="_blank" class="btn btn-r btn-sm" style="text-decoration:none">🎰 Random Draw ('+eligible.length+')</a>':'')  +
         '</div></div>'+
         '<div class="rcard-wrap">'+
           (eligible[0]?'<div class="rcard rcard-gold"><div class="rcard-lbl">🏆 Most Diligent #1</div><div class="rcard-name">'+eligible[0].name+'</div><div class="rcard-sub">'+eligible[0].present+'P · 0L · 0A · HW '+eligible[0].hwDone+'/'+eligible[0].hwDue+' · Paid</div></div>':'')+
@@ -2353,42 +2384,142 @@ async function loadDiligence(classId){
             '</tr>';
           }).join('')+'</tbody></table></div></div>';
     }).join('')||'<p style="padding:40px;text-align:center;color:var(--g400)">No data yet.</p>';
-  }catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>';}
+  }catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+e.message+'<br><small>Open console for details.</small></p>';}
 }
 
 // ─── Random Spin
+var spinCandidates=[];
+var spinWinners=[];
+var _spinningActive=false;
+
+var SPIN_COLORS=['#e11d48','#7c3aed','#1d4ed8','#0891b2','#059669',
+  '#d97706','#dc2626','#9333ea','#2563eb','#16a34a','#ca8a04','#0284c7'];
+
 function openSpin(classId, month) {
-  spinCandidates = [];
+  spinCandidates=[];
+  spinWinners=[];
+  _spinningActive=false;
+  document.getElementById('spinDisplay').textContent='—';
+  document.getElementById('spinWinLog').innerHTML='';
+  document.getElementById('spinAddName').value='';
+  document.getElementById('spinSubtitle').textContent='Month '+month+' — '+classId;
+
   api('getRewards',{classId:classId}).then(function(r){
     if(!r.success)return;
     var mo=r.months.find(function(m){return m.month===month;});
     if(!mo)return;
-    // Use corrected diligent criteria
     spinCandidates=mo.students.filter(function(s){
       return s.absent===0 && s.late===0 && s.tuitionPaid && s.hwDue>0 && s.hwDone>=s.hwDue;
     }).map(function(s){return s.name;});
-    spinWinners=[];
-    document.getElementById('spinCandidates').innerHTML=
-      '<div style="font-size:12px;font-weight:600;color:var(--g600);margin-bottom:6px">'+spinCandidates.length+' eligible students:</div>'+
-      spinCandidates.map(function(n){return '<span class="badge bp" style="margin:2px">'+n+'</span>';}).join('');
-    document.getElementById('spinResult').textContent='';
+    renderSpinWall();
     document.getElementById('moSpin').classList.add('show');
   });
 }
 
-var spinWinners=[];
+function renderSpinWall(){
+  var wall=document.getElementById('spinWall');
+  wall.innerHTML='';
+  if(!spinCandidates.length){
+    wall.innerHTML='<div style="color:var(--g400);font-size:13px;padding:8px">No eligible students yet.</div>';
+    return;
+  }
+  spinCandidates.forEach(function(name,i){
+    var tile=document.createElement('div');
+    var eliminated=spinWinners.includes(name);
+    tile.style.cssText='padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;'+
+      'color:white;background:'+SPIN_COLORS[i%SPIN_COLORS.length]+';cursor:pointer;'+
+      'transition:all .2s;position:relative;display:flex;align-items:center;gap:6px;'+
+      (eliminated?'opacity:.25;text-decoration:line-through;pointer-events:none':'');
+    tile.id='spin-tile-'+i;
+    tile.innerHTML=name+
+      '<span onclick="removeSpinName(\''+name+'\')" '+
+      'style="font-size:10px;opacity:.7;cursor:pointer;padding:0 2px" title="Remove">✕</span>';
+    wall.appendChild(tile);
+  });
+}
+
+function addSpinName(){
+  var inp=document.getElementById('spinAddName');
+  var name=(inp.value||'').trim();
+  if(!name){toast('Enter a name','err');return;}
+  if(spinCandidates.includes(name)){toast('Already in list','err');return;}
+  spinCandidates.push(name);
+  inp.value='';
+  renderSpinWall();
+}
+
+function removeSpinName(name){
+  spinCandidates=spinCandidates.filter(function(n){return n!==name;});
+  spinWinners=spinWinners.filter(function(n){return n!==name;});
+  renderSpinWall();
+}
+
+function resetSpin(){
+  spinWinners=[];
+  _spinningActive=false;
+  document.getElementById('spinDisplay').textContent='—';
+  document.getElementById('spinWinLog').innerHTML='';
+  renderSpinWall();
+}
+
 function doSpin(){
-  if(!spinCandidates.length){toast('No eligible candidates','err');return;}
+  if(_spinningActive)return;
   var available=spinCandidates.filter(function(n){return !spinWinners.includes(n);});
-  if(!available.length){spinWinners=[];available=spinCandidates.slice();}
+  if(!available.length){toast('All candidates drawn! Click ↺ to reset.','ok');return;}
+  _spinningActive=true;
+  document.getElementById('btnDoSpin').disabled=true;
+
   var winner=available[Math.floor(Math.random()*available.length)];
-  spinWinners.push(winner);
-  // Animate
-  var el=document.getElementById('spinResult');
-  var count=0; var interval=setInterval(function(){
-    el.textContent=spinCandidates[Math.floor(Math.random()*spinCandidates.length)];
+  var display=document.getElementById('spinDisplay');
+  var count=0;
+  var total=22+Math.floor(Math.random()*12);
+
+  var interval=setInterval(function(){
     count++;
-    if(count>15){clearInterval(interval);el.textContent='🎉 '+winner+'!';}
+    // Show random name while spinning
+    var pick=available[Math.floor(Math.random()*available.length)];
+    display.textContent=pick;
+    display.style.color='var(--g600)';
+    display.style.background='var(--g100)';
+
+    if(count>=total){
+      clearInterval(interval);
+      // Show winner
+      display.textContent='🎉 '+winner+'!';
+      display.style.color='var(--red)';
+      display.style.background='#fff1f2';
+      display.style.borderColor='var(--red)';
+
+      // Highlight winner tile, dim others
+      spinCandidates.forEach(function(name,i){
+        var tile=document.getElementById('spin-tile-'+i);
+        if(!tile)return;
+        if(name===winner){
+          tile.style.outline='3px solid gold';
+          tile.style.boxShadow='0 0 16px rgba(245,158,11,.5)';
+          tile.style.transform='scale(1.08)';
+        } else if(!spinWinners.includes(name)){
+          tile.style.opacity='.3';
+        }
+      });
+
+      spinWinners.push(winner);
+      // Update winners log
+      var log=document.getElementById('spinWinLog');
+      log.innerHTML=spinWinners.map(function(n,i){
+        return '<span style="padding:4px 12px;border-radius:7px;background:linear-gradient(135deg,#f59e0b,#d97706);'+
+          'color:white;font-size:12px;font-weight:700">#'+(i+1)+' '+n+'</span>';
+      }).join('');
+
+      _spinningActive=false;
+      document.getElementById('btnDoSpin').disabled=false;
+
+      // Restore tiles after 1.5s for next spin
+      setTimeout(function(){
+        renderSpinWall();
+        display.style.borderColor='var(--g200)';
+      },1500);
+    }
   },80);
 }
 
