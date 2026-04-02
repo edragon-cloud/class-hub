@@ -428,7 +428,7 @@ textarea.fc{resize:vertical;min-height:60px;}
         <div class="tw"><table>
           <thead><tr>
             <th>#</th><th>Student ID</th><th>Full Name</th><th>Class</th>
-            <th>Tuition Paid</th><th>Current Month</th>
+            <th>Sessions</th><th>Current Month</th><th>Tuition Paid</th>
             <th>✅ Present</th><th>⏱ Late</th><th>❌ Absent</th><th></th>
           </tr></thead>
           <tbody id="ovBody"><tr><td colspan="10" style="text-align:center;padding:40px;color:var(--g400)">Loading…</td></tr></tbody>
@@ -1069,9 +1069,9 @@ function renderOverview(filterClass) {
       '<td><code style="font-size:11px;background:var(--g100);padding:2px 6px;border-radius:4px;color:var(--g800)">'+(s.studentId||'—')+'</code></td>'+
       '<td><strong>'+s.name+'</strong></td>'+
       '<td><span class="badge '+lvl+'" style="padding:3px 8px;border-radius:5px;font-size:11px">'+s.classId+'</span></td>'+
-      '<td style="font-weight:700">'+s.monthsUsed+'<span style="color:var(--g400);font-weight:400"> months</span></td>'+
-      '<td>'+paidLabel+'</td>'+
+      '<td>'+s.monthsUsed+'<span style="color:var(--g400);font-size:11px"> months</span></td>'+
       '<td><span style="font-weight:700;color:var(--red)">Month '+curMonth+'</span> <span style="font-size:11px;color:var(--g400)">('+s.sessInCycle+'/8)</span></td>'+
+      '<td>'+paidLabel+'</td>'+
       '<td><span class="badge bp">'+s.present+'</span></td>'+
       '<td><span class="badge bl">'+s.late+'</span></td>'+
       '<td><span class="badge ba">'+s.absent+'</span></td>'+
