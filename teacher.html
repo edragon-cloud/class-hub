@@ -2170,7 +2170,7 @@ function buildHWCell(cell,classId,email,hw,status,note){
   sel.onchange=(function(cid,em,h){return function(){
     var ns=this.value, cfg2=statusCfg[ns];
     this.style.background=cfg2.bg; this.style.color=cfg2.color;
-    api('saveHomeworkSubmission',{classId:cid,studentEmail:em,hwId:h.hwId,sessionDate:h.sessionDate,dayLabel:h.dayLabel,type:h.type,content:h.content,status:ns,note:''})
+    api('saveHomeworkSubmission',{classId:cid,studentEmail:em,hwId:h.hwId,sessionDate:h.sessionDate,deadline:h.deadline,dayLabel:h.dayLabel,type:h.type,content:h.content,status:ns,note:''})
       .then(function(){
         if(hwTrackerCache[cid]){var st=hwTrackerCache[cid].students.find(function(s){return s.email===em;});if(st)st.submissions[h.hwId]={status:ns,note:''};}
         toast(em.split('@')[0]+': '+ns,'ok');
