@@ -432,27 +432,23 @@ function renderCalendar() {
 }
 
 function renderHomework() {
-  // Show all HW: pending/overdue always visible; Done items hidden after 14 days
-  const all = (sd.homework||[]).filter(h=>h.status!=='Done'||h.daysLeft>=-14);
+  const all = sd.homework || [];
 
-  // Split: pending = daysLeft >= 0 or Done; overdue = daysLeft < 0 and not Done
-  const hw        = all.filter(h => h.daysLeft >= 0 || h.status === 'Done');
-  const hwOverdue = all.filter(h => h.daysLeft < 0  && h.status !== 'Done');
+  // Pending = deadline not yet passed (daysLeft >= 0)
+  // Past = deadline passed (daysLeft < 0) — ALL of them, including Done
+  const hw        = all.filter(h => h.daysLeft >= 0);
+  const hwOverdue = all.filter(h => h.daysLeft < 0);
 
-  // Sort helpers
-  const sortHW = arr => arr.sort((a,b) => {
-    const aDone = (a.status==='Done'), bDone = (b.status==='Done');
-    if (aDone !== bDone) return aDone ? 1 : -1;
-    return (a.deadline||'') > (b.deadline||'') ? 1 : -1;
-  });
-  sortHW(hw);
+  // Sort pending by deadline asc
+  hw.sort((a,b) => (a.deadline||'') > (b.deadline||'') ? 1 : -1);
+  // Sort past: most recent deadline first
   hwOverdue.sort((a,b) => (a.deadline||'') < (b.deadline||'') ? 1 : -1);
 
-  // Overdue section
+  // Overdue section visibility
   const overdueSection = document.getElementById('overdueSection');
   if (hwOverdue.length) {
     overdueSection.style.display = '';
-    document.getElementById('overdueTitle').textContent = 'Overdue homework (' + hwOverdue.length + ')';
+    document.getElementById('overdueTitle').textContent = 'Past homework (' + hwOverdue.length + ')';
   } else {
     overdueSection.style.display = 'none';
   }
