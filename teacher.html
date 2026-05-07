@@ -374,6 +374,7 @@ textarea.fc{resize:vertical;min-height:60px;}
     <div class="nlbl">Tracking</div>
     <button class="ni" onclick="showSec('tuition')"><span class="ni-ico">💳</span>Tuition & Attendance</button>
     <button class="ni" onclick="showSec('homework')"><span class="ni-ico">📝</span>Homework Tracker</button>
+    <button class="ni" onclick="showSec('classhw')"><span class="ni-ico">📋</span>Class Homework</button>
     <button class="ni" onclick="showSec('participation')"><span class="ni-ico">🙋</span>Participation</button>
     <div class="nlbl">Reports</div>
     <button class="ni" onclick="showSec('diligence')"><span class="ni-ico">🏆</span>Diligent Report</button>
@@ -481,7 +482,21 @@ textarea.fc{resize:vertical;min-height:60px;}
       </div>
     </div>
 
-    <!-- ⑤ PARTICIPATION REPORT -->
+    <!-- ⑤ CLASS HOMEWORK VIEW -->
+    <div id="sec-classhw" class="sec">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:18px;">
+        <div>
+          <div class="sec-title">Class Homework</div>
+          <div class="sec-sub">All homework for the selected class — pending & overdue</div>
+        </div>
+      </div>
+      <div class="ctabs" id="classHWTabs"><button class="ctab active">Select a class</button></div>
+      <div id="classHWContent">
+        <p style="padding:40px;text-align:center;color:var(--g400)">Select a class above to view all homework.</p>
+      </div>
+    </div>
+
+    <!-- ⑥ PARTICIPATION REPORT -->
     <div id="sec-participation" class="sec">
       <div class="ctabs" id="partTabs"><button class="ctab active" onclick="filterPart('all',this)">All Classes</button></div>
       <div id="partContent">
@@ -861,6 +876,7 @@ async function api(action, data) {
 var TITLES = {
   overview:'Students Overview', weekly:'Weekly Schedule',
   tuition:'Tuition & Attendance', homework:'Homework Tracker',
+  classhw:'Class Homework',
   participation:'Participation Report', diligence:'Diligent Report',
   archive:'Archive', settings:'Settings'
 };
@@ -879,6 +895,7 @@ function showSec(id) {
   if (id==='archive') loadArchive();
   if (id==='participation' && classData.length) buildPartTabs();
   if (id==='homework' && classData.length) buildHWTrackerTabs();
+  if (id==='classhw' && classData.length) buildClassHWTabs();
   if (id==='settings') {
     // Populate class selector in Homework Management
     var sel=document.getElementById('hwDelClass');
@@ -1801,7 +1818,7 @@ async function doFinish(){
       toast('Session saved! ✓','ok');
       closeMo('moFinish');
       // Clear ALL caches so fresh data is fetched
-      if(hwTrackerCache[classId]) delete hwTrackerCache[classId];
+      if(hwTrackerCache[classId]) delete hwTrackerCache[classId]; if(classHWCache[classId]) delete classHWCache[classId];
       delete tuitionCache[classId];
       delete tuitionCache[classId+'_totalMonths'];
       classData=[]; allSchedules={};
@@ -1843,7 +1860,7 @@ async function doAssignHW(){
     var r=await api('addHomework',{classId:classId,sessionDate:date,dayLabel:dayLabel,type:type,content:content,deadline:deadline});
     if(r.success){
       toast('Homework assigned ✓','ok'); closeMo('moHW');
-      if(hwTrackerCache[classId])delete hwTrackerCache[classId];
+      if(hwTrackerCache[classId])delete hwTrackerCache[classId]; if(classHWCache[classId])delete classHWCache[classId];
       if(document.getElementById('sec-homework').classList.contains('active')) buildHWTrackerTabs();
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
@@ -1899,7 +1916,7 @@ async function doAssignExtraHW(){
     if(r.success){
       toast('Extra HW assigned ✓','ok');
       closeMo('moExtraHW');
-      if(hwTrackerCache[classId]) delete hwTrackerCache[classId];
+      if(hwTrackerCache[classId]) delete hwTrackerCache[classId]; if(classHWCache[classId]) delete classHWCache[classId];
       if(document.getElementById('sec-homework').classList.contains('active')) buildHWTrackerTabs();
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
@@ -2181,7 +2198,150 @@ function buildHWCell(cell,classId,email,hw,status,note){
 }
 
 // ═══════════════════════════════════════════════════════
-// ⑤ PARTICIPATION REPORT
+// ⑤ CLASS HOMEWORK VIEW
+// ═══════════════════════════════════════════════════════
+var classHWCache={};
+
+function buildClassHWTabs(){
+  var el=document.getElementById('classHWTabs');
+  el.innerHTML='';
+  if(!classData.length){el.innerHTML='<p style="color:var(--g400);font-size:13px">No classes</p>';return;}
+  classData.forEach(function(cls,i){
+    var b=document.createElement('button');
+    b.className='ctab'+(i===0?' active':''); b.textContent=cls.classId;
+    b.onclick=(function(cid,btn){return function(){loadClassHW(cid,btn);};})(cls.classId,b);
+    el.appendChild(b);
+  });
+  loadClassHW(classData[0].classId, el.firstChild);
+}
+
+async function loadClassHW(classId, btn){
+  document.querySelectorAll('#classHWTabs .ctab').forEach(function(b){b.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+  var el=document.getElementById('classHWContent');
+  if(classHWCache[classId]){renderClassHW(classId);return;}
+  el.innerHTML='<p style="padding:30px;text-align:center;color:var(--g400)">Loading…</p>';
+  try{
+    var r=await api('getHomeworkTracker',{classId:classId});
+    if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
+    classHWCache[classId]=r;
+    renderClassHW(classId);
+  }catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>';}
+}
+
+function renderClassHW(classId){
+  var data=classHWCache[classId]; if(!data) return;
+  var el=document.getElementById('classHWContent');
+  var hwList=data.homework||[];
+  var today=new Date().toISOString().split('T')[0];
+
+  if(!hwList.length){
+    el.innerHTML='<div class="card"><div style="padding:40px;text-align:center;color:var(--g400)">'+
+      '<div style="font-size:32px;margin-bottom:8px">📝</div>'+
+      '<div style="font-weight:600">No homework assigned yet</div>'+
+    '</div></div>';
+    return;
+  }
+
+  // Deduplicate by session+type (same logic as HW tracker)
+  var seen={};
+  var pending=[], overdue=[];
+  hwList.forEach(function(hw){
+    var isExtra=hw.dayLabel==='EXTRA'||!hw.sessionDate;
+    var key=isExtra?('EXTRA_'+hw.deadline+'_'+(hw.type||'')):(hw.sessionDate+'_'+(hw.type||''));
+    if(seen[key]) return;
+    seen[key]=true;
+    var dl=hw.deadline||'';
+    var isPast=dl && dl<today;
+    if(isPast) overdue.push(hw);
+    else pending.push(hw);
+  });
+  // Sort
+  pending.sort(function(a,b){return (a.deadline||'')>(b.deadline||'')?1:-1;});
+  overdue.sort(function(a,b){return (a.deadline||'')<(b.deadline||'')?1:-1;});
+
+  var typeNames={W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
+  var typeColors={W:'#f97316',L:'#3b82f6',S:'#8b5cf6',V:'#22c55e',R:'#ec4899',G:'#6b7280'};
+  var skBgMap={W:'#ffedd5',L:'#dbeafe',S:'#ede9fe',V:'#dcfce7',R:'#fce7f3',G:'#f3f4f6'};
+  var skClMap={W:'#7c2d12',L:'#1e40af',S:'#4c1d95',V:'#166534',R:'#9d174d',G:'#374151'};
+
+  function hwCard(hw, isOver){
+    var dl=hw.deadline||'—';
+    var dlDisp=dl;
+    if(dl.length===10){
+      var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      var d=new Date(dl+'T00:00:00');
+      dlDisp=days[d.getDay()]+', '+dl.slice(8)+'-'+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+'-'+dl.slice(0,4);
+    }
+    var tname=typeNames[hw.type]||hw.type||'—';
+    var tcol=typeColors[hw.type]||'#6b7280';
+    var sbg=skBgMap[hw.type]||'#f3f4f6';
+    var scl=skClMap[hw.type]||'#374151';
+    var isExtra=hw.dayLabel==='EXTRA'||!hw.sessionDate;
+    var assignedDisp=hw.sessionDate?('📅 '+fmtBrit(hw.sessionDate)):'';
+    var contentHtml=(hw.content||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+
+    // Completion stats from students
+    var students=data.students||[];
+    var total=students.length, done=0;
+    students.forEach(function(s){
+      var sub=s.submissions[hw.hwId];
+      if(sub&&sub.status==='Done') done++;
+    });
+    var ratePct=total?Math.round((done/total)*100):0;
+    var rateBg=ratePct>=80?'#dcfce7':ratePct>=40?'#fef9c3':'#fee2e2';
+    var rateCol=ratePct>=80?'#166534':ratePct>=40?'#854d0e':'#991b1b';
+
+    return '<div style="background:white;border-radius:12px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.07);border-left:4px solid '+tcol+(isOver?';opacity:.9':'')+'">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap;">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
+          '<span style="padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;background:'+sbg+';color:'+scl+'">'+tname+'</span>'+
+          (isExtra?'<span style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#fef9c3;color:#854d0e">⭐ Extra</span>':'')+
+          (assignedDisp?'<span style="font-size:11px;color:var(--g400)">'+assignedDisp+'</span>':'')+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:8px;">'+
+          '<div style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:'+rateBg+';color:'+rateCol+'">'+done+'/'+total+' done</div>'+
+          (isOver
+            ? '<span style="font-size:11px;font-weight:700;color:#dc2626;">⚠ Overdue</span>'
+            : ''
+          )+
+        '</div>'+
+      '</div>'+
+      '<div style="font-size:13px;color:var(--g900);line-height:1.6;margin-bottom:10px;white-space:pre-wrap;word-break:break-word">'+contentHtml+'</div>'+
+      '<div style="font-size:11px;color:var(--g400);">📅 Deadline: <strong style="color:'+(isOver?'#dc2626':'var(--g900)')+'">'+dlDisp+'</strong></div>'+
+      '<div style="margin-top:12px;background:var(--g100);border-radius:6px;height:6px;overflow:hidden;"><div style="height:100%;background:'+tcol+';width:'+ratePct+'%;border-radius:6px;transition:width .5s;"></div></div>'+
+    '</div>';
+  }
+
+  var pendingHtml=pending.length
+    ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">'+pending.map(function(h){return hwCard(h,false);}).join('')+'</div>'
+    : '<p style="color:var(--g400);font-size:13px;padding:20px 0;">No upcoming homework.</p>';
+
+  var overdueHtml='';
+  if(overdue.length){
+    overdueHtml='<div style="margin-top:28px;">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">'+
+        '<div style="flex:1;height:1px;background:var(--g200);"></div>'+
+        '<div style="display:inline-flex;align-items:center;gap:7px;background:#1a1916;color:white;font-size:13px;font-weight:700;padding:6px 14px;border-radius:20px;">'+
+          '<span>⚠</span><span>Overdue ('+overdue.length+')</span>'+
+        '</div>'+
+        '<div style="flex:1;height:1px;background:var(--g200);"></div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">'+
+        overdue.map(function(h){return hwCard(h,true);}).join('')+
+      '</div>'+
+    '</div>';
+  }
+
+  el.innerHTML='<div style="padding:4px 0;">'+
+    '<div style="font-family:var(--serif);font-size:15px;font-weight:700;margin-bottom:14px;">Pending Homework</div>'+
+    pendingHtml+
+    overdueHtml+
+  '</div>';
+}
+
+// ═══════════════════════════════════════════════════════
+// ⑥ PARTICIPATION REPORT
 // ═══════════════════════════════════════════════════════
 function buildPartTabs(){
   var el=document.getElementById('partTabs');

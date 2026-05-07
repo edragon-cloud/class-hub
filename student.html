@@ -246,9 +246,23 @@ table.pt tr:last-child td{border-bottom:none;}
 
     <!-- HOMEWORK -->
     <div id="section-homework" class="section">
+      <!-- Pending -->
       <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:16px;">Pending Homework</div>
       <div class="hw-grid" id="hwGrid">
         <p style="color:var(--g400);font-size:13px;">No upcoming homework.</p>
+      </div>
+      <!-- Overdue -->
+      <div id="overdueSection" style="margin-top:28px;display:none;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <div style="flex:1;height:1px;background:var(--g200);"></div>
+          <button id="overdueToggle" onclick="toggleOverdue()" style="display:inline-flex;align-items:center;gap:7px;background:#1a1916;color:white;font-size:13px;font-weight:700;padding:6px 14px;border-radius:20px;border:none;cursor:pointer;">
+            <span>⚠</span><span id="overdueTitle">Overdue homework</span><span id="overdueChevron" style="font-size:10px;transition:transform .25s;">▼</span>
+          </button>
+          <div style="flex:1;height:1px;background:var(--g200);"></div>
+        </div>
+        <div id="overdueBody">
+          <div class="hw-grid" id="hwGridOverdue"></div>
+        </div>
       </div>
     </div>
 
@@ -419,18 +433,33 @@ function renderCalendar() {
 
 function renderHomework() {
   // Show all HW: pending/overdue always visible; Done items hidden after 14 days
-  const hw = (sd.homework||[]).filter(h=>h.status!=='Done'||h.daysLeft>=-14);
-  if (!hw.length) {
-    document.getElementById('hwGrid').innerHTML = '<p style="color:var(--g400);font-size:13px;grid-column:1/-1;padding:40px;text-align:center;">🎉 No upcoming homework!</p>';
-    return;
+  const all = (sd.homework||[]).filter(h=>h.status!=='Done'||h.daysLeft>=-14);
+
+  // Split: pending = daysLeft >= 0 or Done; overdue = daysLeft < 0 and not Done
+  const hw        = all.filter(h => h.daysLeft >= 0 || h.status === 'Done');
+  const hwOverdue = all.filter(h => h.daysLeft < 0  && h.status !== 'Done');
+
+  // Sort helpers
+  const sortHW = arr => arr.sort((a,b) => {
+    const aDone = (a.status==='Done'), bDone = (b.status==='Done');
+    if (aDone !== bDone) return aDone ? 1 : -1;
+    return (a.deadline||'') > (b.deadline||'') ? 1 : -1;
+  });
+  sortHW(hw);
+  hwOverdue.sort((a,b) => (a.deadline||'') < (b.deadline||'') ? 1 : -1);
+
+  // Overdue section
+  const overdueSection = document.getElementById('overdueSection');
+  if (hwOverdue.length) {
+    overdueSection.style.display = '';
+    document.getElementById('overdueTitle').textContent = 'Overdue homework (' + hwOverdue.length + ')';
+  } else {
+    overdueSection.style.display = 'none';
   }
 
-  // Sort: pending first (by deadline asc), Done last
-  hw.sort((a,b) => {
-    const aDone = (a.status==='Done'), bDone = (b.status==='Done');
-    if (aDone !== bDone) return aDone ? 1 : -1; // Done goes to bottom
-    return (a.deadline||'') > (b.deadline||'') ? 1 : -1; // earliest deadline first
-  });
+  if (!hw.length) {
+    document.getElementById('hwGrid').innerHTML = '<p style="color:var(--g400);font-size:13px;grid-column:1/-1;padding:40px;text-align:center;">🎉 No upcoming homework!</p>';
+  }
 
   const typeNames = {W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -441,7 +470,7 @@ function renderHomework() {
     Undone:  {bg:'#fee2e2',color:'#991b1b',icon:'✗ Undone'},
   };
 
-  document.getElementById('hwGrid').innerHTML = hw.map(h => {
+  const renderCard = h => {
     const d = h.daysLeft;
     const ct = d<0?'⚠ Overdue':d===0?'⏰ Due today!':d===1?'1 day left':`${d} days left`;
     const urgent = d<=1;
@@ -451,18 +480,12 @@ function renderHomework() {
     const statusBadge = showStatus
       ? `<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;background:${stCfg.bg};color:${stCfg.color};margin-top:8px">${stCfg.icon}</div>`
       : '';
-
-    // Format deadline with weekday
     let deadlineDisp = h.deadline||'—';
     if (h.deadline && h.deadline.length===10) {
       const dd = new Date(h.deadline+'T00:00:00');
-      const weekday = dayNames[dd.getDay()];
-      deadlineDisp = `${weekday}, ${fmtDFull(h.deadline)}`;
+      deadlineDisp = `${dayNames[dd.getDay()]}, ${fmtDFull(h.deadline)}`;
     }
-
-    // Preserve line breaks from teacher input
     const contentHtml = (h.content||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-
     return `<div class="hw-card ${h.type||'W'}" style="${st==='Done'?'opacity:.65;border-left-color:#ccc':''}${h.isExtra&&st!=='Done'?';border-left-color:#eab308;background:linear-gradient(135deg,#fffef0 0%,white 60%)':''}${d<0&&st!=='Done'?';border-left-color:#dc2626;background:linear-gradient(135deg,#fff1f1 0%,white 70%)':''}">
       <div class="hw-top">
         <span class="hw-badge hb-${h.type||'W'}">${typeNames[h.type]||h.type}</span>
@@ -473,7 +496,22 @@ function renderHomework() {
       <div class="hw-deadline">📅 Deadline: ${deadlineDisp}</div>
       ${statusBadge}
     </div>`;
-  }).join('');
+  };
+
+  if (hw.length) {
+    document.getElementById('hwGrid').innerHTML = hw.map(renderCard).join('');
+  }
+  if (hwOverdue.length) {
+    document.getElementById('hwGridOverdue').innerHTML = hwOverdue.map(renderCard).join('');
+  }
+}
+
+function toggleOverdue(){
+  var body=document.getElementById('overdueBody');
+  var chevron=document.getElementById('overdueChevron');
+  var hidden=body.style.display==='none';
+  body.style.display=hidden?'':'none';
+  chevron.style.transform=hidden?'':'rotate(-90deg)';
 }
 
 function renderTuition() {
