@@ -2293,7 +2293,7 @@ function renderClassHW(classId){
       if(va>vb) return asc?1:-1;
       return 0;
     });
-    renderTable();
+    // does NOT call renderTable — caller's responsibility
   }
 
   var typeNames={W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
@@ -2315,7 +2315,7 @@ function renderClassHW(classId){
   }
 
   function renderTable(){
-    sortRows(window._classHWSortCol||'deadline', window._classHWSortAsc!==undefined?window._classHWSortAsc:true);
+    // rows already sorted by sortRows() before this is called
     var pending=rows.filter(function(r){return !r.isPast;});
     var past=rows.filter(function(r){return r.isPast;});
 
@@ -2397,15 +2397,14 @@ function renderClassHW(classId){
     if (!th) return;
     var col = th.getAttribute('data-sortcol');
     if (!col) return;
-    if (window._classHWSortCol===col) window._classHWSortAsc=!window._classHWSortAsc;
-    else { window._classHWSortCol=col; window._classHWSortAsc=true; }
+    var asc = (window._classHWSortCol===col) ? !window._classHWSortAsc : true;
+    sortRows(col, asc);
     renderTable();
   });
 
   // Initial render
-  window._classHWSortCol='deadline';
-  window._classHWSortAsc=true;
   sortRows('deadline', true);
+  renderTable();
 }
 
 // ═══════════════════════════════════════════════════════
