@@ -374,7 +374,6 @@ textarea.fc{resize:vertical;min-height:60px;}
     <div class="nlbl">Tracking</div>
     <button class="ni" onclick="showSec('tuition')"><span class="ni-ico">💳</span>Tuition & Attendance</button>
     <button class="ni" onclick="showSec('homework')"><span class="ni-ico">📝</span>Homework Tracker</button>
-    <button class="ni" onclick="showSec('classhw')"><span class="ni-ico">📋</span>Class Homework</button>
     <button class="ni" onclick="showSec('participation')"><span class="ni-ico">🙋</span>Participation</button>
     <div class="nlbl">Reports</div>
     <button class="ni" onclick="showSec('diligence')"><span class="ni-ico">🏆</span>Diligent Report</button>
@@ -482,21 +481,7 @@ textarea.fc{resize:vertical;min-height:60px;}
       </div>
     </div>
 
-    <!-- ⑤ CLASS HOMEWORK VIEW -->
-    <div id="sec-classhw" class="sec">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:18px;">
-        <div>
-          <div class="sec-title">Class Homework</div>
-          <div class="sec-sub">All homework for the selected class — pending & overdue</div>
-        </div>
-      </div>
-      <div class="ctabs" id="classHWTabs"><button class="ctab active">Select a class</button></div>
-      <div id="classHWContent">
-        <p style="padding:40px;text-align:center;color:var(--g400)">Select a class above to view all homework.</p>
-      </div>
-    </div>
-
-    <!-- ⑥ PARTICIPATION REPORT -->
+    <!-- ⑤ PARTICIPATION REPORT -->
     <div id="sec-participation" class="sec">
       <div class="ctabs" id="partTabs"><button class="ctab active" onclick="filterPart('all',this)">All Classes</button></div>
       <div id="partContent">
@@ -876,7 +861,6 @@ async function api(action, data) {
 var TITLES = {
   overview:'Students Overview', weekly:'Weekly Schedule',
   tuition:'Tuition & Attendance', homework:'Homework Tracker',
-  classhw:'Class Homework',
   participation:'Participation Report', diligence:'Diligent Report',
   archive:'Archive', settings:'Settings'
 };
@@ -895,7 +879,6 @@ function showSec(id) {
   if (id==='archive') loadArchive();
   if (id==='participation' && classData.length) buildPartTabs();
   if (id==='homework' && classData.length) buildHWTrackerTabs();
-  if (id==='classhw' && classData.length) buildClassHWTabs();
   if (id==='settings') {
     // Populate class selector in Homework Management
     var sel=document.getElementById('hwDelClass');
@@ -1385,7 +1368,10 @@ function renderTuitionGrid(classId){
       var cell=document.getElementById(cellId);
       if(!cell)continue;
       var payment=s.monthPayments[moNo];
-      buildPaidCell(cell,classId,s.email,moNo,!!payment,payment?payment.date:'',payment?payment.note:'');
+      // Normalize date: GAS may store ISO datetime, extract date part only
+      var pd = payment ? (payment.date||'') : '';
+      if(pd.length > 10) pd = pd.slice(0,10);
+      buildPaidCell(cell,classId,s.email,moNo,!!payment,pd,payment?payment.note:'');
     }
   });
 }
@@ -1478,6 +1464,9 @@ async function removeAllAtt(classId, sessionDate){
 }
 
 function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
+  // Normalize paidDate: GAS may return ISO datetime (2026-05-07T17:...), extract date part only
+  if(paidDate && paidDate.length > 10) paidDate = paidDate.slice(0,10);
+
   cell.innerHTML='';
   var wrap=document.createElement('div');
   wrap.style='display:flex;flex-direction:column;gap:3px;padding:4px 2px;';
@@ -1495,22 +1484,32 @@ function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
 
   topRow.appendChild(cb); topRow.appendChild(lbl);
 
-  if(paid&&paidDate){
-    var di=document.createElement('input'); di.type='date'; di.value=paidDate;
+  if(paid){
+    // Always show date picker when paid; use paidDate if available, else today as display default
+    var displayDate = paidDate || new Date().toISOString().split('T')[0];
+    var di=document.createElement('input'); di.type='date'; di.value=displayDate;
     di.style='font-size:10px;border:1px solid #86efac;border-radius:4px;padding:1px 4px;background:#f0fdf4;color:#166534;cursor:pointer;width:88px;';
     di.onchange=(function(cid,em,mo){return function(){updatePaidDate(cid,em,mo,this);};})(classId,email,moNo);
     topRow.appendChild(di);
   }
   wrap.appendChild(topRow);
 
-  var ni=document.createElement('input'); ni.type='text'; ni.value=note||''; ni.placeholder='Note…';
-  ni.style='font-size:10px;border:1px solid var(--g200);border-radius:4px;padding:2px 6px;width:100%;color:var(--g600);outline:none;';
-  ni.onfocus=function(){this.style.borderColor='var(--red)';};
-  ni.onblur=(function(cid,em,mo,nEl){return function(){
-    api('markTuitionPaid',{classId:cid,studentEmail:em,monthNo:mo,paid:true,paidDate:paidDate||new Date().toISOString().split('T')[0],note:nEl.value})
-      .catch(function(){});
-  };})(classId,email,moNo,ni);
-  wrap.appendChild(ni);
+  if(paid){
+    // Note field: only save on blur if note actually changed, and only if already paid
+    var ni=document.createElement('input'); ni.type='text'; ni.value=note||''; ni.placeholder='Note…';
+    ni.style='font-size:10px;border:1px solid var(--g200);border-radius:4px;padding:2px 6px;width:100%;color:var(--g600);outline:none;';
+    ni.onfocus=function(){this.style.borderColor='var(--red)';};
+    ni.dataset.original = note||'';
+    ni.onblur=(function(cid,em,mo,nEl,pd){return function(){
+      // Only save if note changed and student is paid
+      if(nEl.value === nEl.dataset.original) return;
+      var currentDate = pd || new Date().toISOString().split('T')[0];
+      api('markTuitionPaid',{classId:cid,studentEmail:em,monthNo:mo,paid:true,paidDate:currentDate,note:nEl.value})
+        .then(function(){ nEl.dataset.original=nEl.value; })
+        .catch(function(){});
+    };})(classId,email,moNo,ni,paidDate);
+    wrap.appendChild(ni);
+  }
   cell.appendChild(wrap);
 }
 
@@ -1818,7 +1817,7 @@ async function doFinish(){
       toast('Session saved! ✓','ok');
       closeMo('moFinish');
       // Clear ALL caches so fresh data is fetched
-      if(hwTrackerCache[classId]) delete hwTrackerCache[classId]; if(classHWCache[classId]) delete classHWCache[classId];
+      if(hwTrackerCache[classId]) delete hwTrackerCache[classId];
       delete tuitionCache[classId];
       delete tuitionCache[classId+'_totalMonths'];
       classData=[]; allSchedules={};
@@ -1860,7 +1859,7 @@ async function doAssignHW(){
     var r=await api('addHomework',{classId:classId,sessionDate:date,dayLabel:dayLabel,type:type,content:content,deadline:deadline});
     if(r.success){
       toast('Homework assigned ✓','ok'); closeMo('moHW');
-      if(hwTrackerCache[classId])delete hwTrackerCache[classId]; if(classHWCache[classId])delete classHWCache[classId];
+      if(hwTrackerCache[classId])delete hwTrackerCache[classId];
       if(document.getElementById('sec-homework').classList.contains('active')) buildHWTrackerTabs();
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
@@ -1916,7 +1915,7 @@ async function doAssignExtraHW(){
     if(r.success){
       toast('Extra HW assigned ✓','ok');
       closeMo('moExtraHW');
-      if(hwTrackerCache[classId]) delete hwTrackerCache[classId]; if(classHWCache[classId]) delete classHWCache[classId];
+      if(hwTrackerCache[classId]) delete hwTrackerCache[classId];
       if(document.getElementById('sec-homework').classList.contains('active')) buildHWTrackerTabs();
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
@@ -2198,217 +2197,7 @@ function buildHWCell(cell,classId,email,hw,status,note){
 }
 
 // ═══════════════════════════════════════════════════════
-// ⑤ CLASS HOMEWORK VIEW
-// ═══════════════════════════════════════════════════════
-var classHWCache={};
-
-function buildClassHWTabs(){
-  var el=document.getElementById('classHWTabs');
-  el.innerHTML='';
-  if(!classData.length){el.innerHTML='<p style="color:var(--g400);font-size:13px">No classes</p>';return;}
-  classData.forEach(function(cls,i){
-    var b=document.createElement('button');
-    b.className='ctab'+(i===0?' active':''); b.textContent=cls.classId;
-    b.onclick=(function(cid,btn){return function(){loadClassHW(cid,btn);};})(cls.classId,b);
-    el.appendChild(b);
-  });
-  loadClassHW(classData[0].classId, el.firstChild);
-}
-
-async function loadClassHW(classId, btn){
-  document.querySelectorAll('#classHWTabs .ctab').forEach(function(b){b.classList.remove('active');});
-  if(btn) btn.classList.add('active');
-  var el=document.getElementById('classHWContent');
-  if(classHWCache[classId]){renderClassHW(classId);return;}
-  el.innerHTML='<p style="padding:30px;text-align:center;color:var(--g400)">Loading…</p>';
-  try{
-    var r=await api('getHomeworkTracker',{classId:classId});
-    if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
-    classHWCache[classId]=r;
-    renderClassHW(classId);
-  }catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>';}
-}
-
-function renderClassHW(classId){
-  var data=classHWCache[classId]; if(!data) return;
-  var el=document.getElementById('classHWContent');
-  var hwList=data.homework||[];
-  var students=data.students||[];
-  var today=new Date().toISOString().split('T')[0];
-
-  if(!hwList.length){
-    el.innerHTML='<div class="card"><div style="padding:40px;text-align:center;color:var(--g400)">'+
-      '<div style="font-size:32px;margin-bottom:8px">📝</div>'+
-      '<div style="font-weight:600">No homework assigned yet</div>'+
-    '</div></div>';
-    return;
-  }
-
-  // Deduplicate
-  var seen={};
-  var rows=[];
-  hwList.forEach(function(hw){
-    var isExtra=hw.dayLabel==='EXTRA'||!hw.sessionDate;
-    var key=isExtra?('EXTRA_'+hw.deadline+'_'+(hw.type||'')):(hw.sessionDate+'_'+(hw.type||''));
-    if(seen[key]) return;
-    seen[key]=true;
-
-    // Completion stats
-    var total=students.length, done=0, late=0, partial=0;
-    students.forEach(function(s){
-      var sub=s.submissions[hw.hwId];
-      var st=sub?sub.status:'Undone';
-      if(st==='Done') done++;
-      else if(st==='Late') late++;
-      else if(st==='Partial') partial++;
-    });
-    var undone=total-done-late-partial;
-    var ratePct=total?Math.round(((done+late+partial)/total)*100):0;
-
-    rows.push({
-      hw: hw,
-      isExtra: isExtra,
-      isPast: hw.deadline && hw.deadline<today,
-      done: done, late: late, partial: partial, undone: undone, total: total,
-      ratePct: ratePct,
-    });
-  });
-
-  // Sort state
-  var sortCol = window._classHWSortCol || 'deadline';
-  var sortAsc = (window._classHWSortAsc !== undefined) ? window._classHWSortAsc : true;
-
-  function sortRows(col, asc){
-    window._classHWSortCol = col;
-    window._classHWSortAsc = asc;
-    rows.sort(function(a,b){
-      var va, vb;
-      if(col==='deadline'){ va=a.hw.deadline||''; vb=b.hw.deadline||''; }
-      else if(col==='type'){ va=a.hw.type||''; vb=b.hw.type||''; }
-      else if(col==='session'){ va=a.hw.sessionDate||''; vb=b.hw.sessionDate||''; }
-      else if(col==='done'){ va=a.ratePct; vb=b.ratePct; }
-      else if(col==='status'){ va=a.isPast?1:0; vb=b.isPast?1:0; }
-      else { va=''; vb=''; }
-      if(va<vb) return asc?-1:1;
-      if(va>vb) return asc?1:-1;
-      return 0;
-    });
-    // does NOT call renderTable — caller's responsibility
-  }
-
-  var typeNames={W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
-  var skBgMap={W:'#ffedd5',L:'#dbeafe',S:'#ede9fe',V:'#dcfce7',R:'#fce7f3',G:'#f3f4f6'};
-  var skClMap={W:'#7c2d12',L:'#1e40af',S:'#4c1d95',V:'#166534',R:'#9d174d',G:'#374151'};
-  var typeColors={W:'#f97316',L:'#3b82f6',S:'#8b5cf6',V:'#22c55e',R:'#ec4899',G:'#6b7280'};
-  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-  function fmtDl(dl){
-    if(!dl||dl.length<10) return dl||'—';
-    var d=new Date(dl+'T00:00:00');
-    var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    return days[d.getDay()]+', '+parseInt(dl.slice(8))+'-'+months[d.getMonth()]+'-'+dl.slice(0,4);
-  }
-
-  function thBtn(label, col){
-    var arrow = sortCol===col ? (sortAsc?' ↑':' ↓') : ' ↕';
-    return '<span style="cursor:pointer;user-select:none;white-space:nowrap" data-sortcol="'+col+'" class="chw-th">'+label+'<span style="opacity:.5;font-size:10px">'+arrow+'</span></span>';
-  }
-
-  function renderTable(){
-    // rows already sorted by sortRows() before this is called
-    var pending=rows.filter(function(r){return !r.isPast;});
-    var past=rows.filter(function(r){return r.isPast;});
-
-    function buildTable(arr, isPastSection){
-      if(!arr.length) return '<p style="color:var(--g400);font-size:13px;padding:16px 18px;">'+
-        (isPastSection?'No past homework.':'No upcoming homework.')+'</p>';
-      var tRows=arr.map(function(r){
-        var hw=r.hw;
-        var tname=typeNames[hw.type]||hw.type||'—';
-        var sbg=skBgMap[hw.type]||'#f3f4f6';
-        var scl=skClMap[hw.type]||'#374151';
-        var tcol=typeColors[hw.type]||'#6b7280';
-        var contentShort=(hw.content||'—').replace(/\n/g,' ');
-        if(contentShort.length>80) contentShort=contentShort.slice(0,80)+'…';
-        var contentEsc=contentShort.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        var contentFull=(hw.content||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-        var dlDisp=fmtDl(hw.deadline||'');
-        var sessDisp=hw.sessionDate?fmtBrit(hw.sessionDate):(hw.isExtra?'Extra':'—');
-        var rateBg=r.ratePct>=80?'#dcfce7':r.ratePct>=40?'#fef9c3':'#fee2e2';
-        var rateCol=r.ratePct>=80?'#166534':r.ratePct>=40?'#854d0e':'#991b1b';
-        var statusCell=isPastSection
-          ? '<span style="font-size:11px;font-weight:700;color:#dc2626">⚠ Past</span>'
-          : '<span style="font-size:11px;font-weight:700;color:#16a34a">● Active</span>';
-        return '<tr>'+
-          '<td style="padding:10px 12px;border-bottom:1px solid var(--g100)">'+
-            '<span style="padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;background:'+sbg+';color:'+scl+'">'+tname+'</span>'+
-            (hw.isExtra?' <span style="font-size:10px;background:#fef9c3;color:#854d0e;border-radius:5px;padding:2px 6px;font-weight:700">⭐ Extra</span>':'')+
-          '</td>'+
-          '<td style="padding:10px 12px;border-bottom:1px solid var(--g100);font-size:12px;color:var(--g400)">'+sessDisp+'</td>'+
-          '<td style="padding:10px 12px;border-bottom:1px solid var(--g100);font-size:12px;max-width:280px">'+
-            '<span title="'+contentFull.replace(/"/g,'&quot;')+'">'+contentEsc+'</span>'+
-          '</td>'+
-          '<td style="padding:10px 12px;border-bottom:1px solid var(--g100);font-size:12px;white-space:nowrap;color:'+(isPastSection?'#dc2626':'var(--g900)')+'">'+dlDisp+'</td>'+
-          '<td style="padding:10px 12px;border-bottom:1px solid var(--g100);text-align:center">'+
-            '<span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:'+rateBg+';color:'+rateCol+'">'+(r.done+r.late+r.partial)+'/'+r.total+'</span>'+
-          '</td>'+
-          '<td style="padding:10px 12px;border-bottom:1px solid var(--g100);text-align:center">'+
-            '<span style="font-size:11px;font-weight:700;color:#16a34a">'+r.done+'</span>'+
-            (r.late?'&nbsp;<span style="font-size:10px;color:#854d0e">⏱'+r.late+'</span>':'')+
-            (r.partial?'&nbsp;<span style="font-size:10px;color:#1e40af">½'+r.partial+'</span>':'')+
-            (r.undone?'&nbsp;<span style="font-size:10px;color:#991b1b">✗'+r.undone+'</span>':'')+
-          '</td>'+
-          '<td style="padding:10px 12px;border-bottom:1px solid var(--g100);text-align:center">'+statusCell+'</td>'+
-        '</tr>';
-      }).join('');
-      return '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
-        '<thead><tr style="background:var(--g100)">'+
-          '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--g600)">'+thBtn('Skill','type')+'</th>'+
-          '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--g600)">'+thBtn('Session','session')+'</th>'+
-          '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--g600)">Content</th>'+
-          '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--g600)">'+thBtn('Deadline','deadline')+'</th>'+
-          '<th style="padding:8px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--g600)">'+thBtn('Submitted','done')+'</th>'+
-          '<th style="padding:8px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--g600)">Breakdown</th>'+
-          '<th style="padding:8px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--g600)">'+thBtn('Status','status')+'</th>'+
-        '</tr></thead>'+
-        '<tbody>'+tRows+'</tbody>'+
-      '</table>';
-    }
-
-    el.innerHTML=
-      '<div class="card" style="margin-bottom:0">'+
-        '<div class="ch"><div class="ct">Upcoming Homework ('+pending.length+')</div>'+
-          '<span style="font-size:12px;color:var(--g400)">Click column headers to sort</span></div>'+
-        buildTable(pending, false)+
-      '</div>'+
-      (past.length?
-        '<div class="card" style="margin-top:14px;margin-bottom:0">'+
-          '<div class="ch" style="background:var(--g900);border-radius:var(--r) var(--r) 0 0">'+
-            '<div class="ct" style="color:white">Past Homework ('+past.length+')</div>'+
-          '</div>'+
-          buildTable(past, true)+
-        '</div>'
-      :'');
-  }
-
-  // Wire sort clicks via event delegation (avoids inline quote-escaping issues)
-  el.addEventListener('click', function(e){
-    var th = e.target.closest('.chw-th');
-    if (!th) return;
-    var col = th.getAttribute('data-sortcol');
-    if (!col) return;
-    var asc = (window._classHWSortCol===col) ? !window._classHWSortAsc : true;
-    sortRows(col, asc);
-    renderTable();
-  });
-
-  // Initial render
-  sortRows('deadline', true);
-  renderTable();
-}
-
-// ═══════════════════════════════════════════════════════
-// ⑥ PARTICIPATION REPORT
+// ⑤ PARTICIPATION REPORT
 // ═══════════════════════════════════════════════════════
 function buildPartTabs(){
   var el=document.getElementById('partTabs');
