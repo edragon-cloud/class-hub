@@ -374,6 +374,7 @@ textarea.fc{resize:vertical;min-height:60px;}
     <div class="nlbl">Tracking</div>
     <button class="ni" onclick="showSec('tuition')"><span class="ni-ico">💳</span>Tuition & Attendance</button>
     <button class="ni" onclick="showSec('homework')"><span class="ni-ico">📝</span>Homework Tracker</button>
+    <button class="ni" onclick="showSec('hwbook')"><span class="ni-ico">📖</span>Homework Book</button>
     <button class="ni" onclick="showSec('participation')"><span class="ni-ico">🙋</span>Participation</button>
     <div class="nlbl">Reports</div>
     <button class="ni" onclick="showSec('diligence')"><span class="ni-ico">🏆</span>Diligent Report</button>
@@ -481,7 +482,15 @@ textarea.fc{resize:vertical;min-height:60px;}
       </div>
     </div>
 
-    <!-- ⑤ PARTICIPATION REPORT -->
+    <!-- ⑤ HOMEWORK BOOK -->
+    <div id="sec-hwbook" class="sec">
+      <div class="ctabs" id="hwBookTabs"><button class="ctab active">Select a class</button></div>
+      <div id="hwBookContent">
+        <p style="padding:40px;text-align:center;color:var(--g400)">Select a class above to view assigned homework.</p>
+      </div>
+    </div>
+
+    <!-- ⑥ PARTICIPATION REPORT -->
     <div id="sec-participation" class="sec">
       <div class="ctabs" id="partTabs"><button class="ctab active" onclick="filterPart('all',this)">All Classes</button></div>
       <div id="partContent">
@@ -861,6 +870,7 @@ async function api(action, data) {
 var TITLES = {
   overview:'Students Overview', weekly:'Weekly Schedule',
   tuition:'Tuition & Attendance', homework:'Homework Tracker',
+  hwbook:'Homework Book',
   participation:'Participation Report', diligence:'Diligent Report',
   archive:'Archive', settings:'Settings'
 };
@@ -879,6 +889,7 @@ function showSec(id) {
   if (id==='archive') loadArchive();
   if (id==='participation' && classData.length) buildPartTabs();
   if (id==='homework' && classData.length) buildHWTrackerTabs();
+  if (id==='hwbook' && classData.length) buildHWBookTabs();
   if (id==='settings') {
     // Populate class selector in Homework Management
     var sel=document.getElementById('hwDelClass');
@@ -1368,9 +1379,7 @@ function renderTuitionGrid(classId){
       var cell=document.getElementById(cellId);
       if(!cell)continue;
       var payment=s.monthPayments[moNo];
-      var pd = payment ? (payment.date||'') : '';
-      if(pd.length > 10) pd = pd.slice(0,10);  // normalize ISO datetime → date-only
-      buildPaidCell(cell,classId,s.email,moNo,!!payment,pd,payment?payment.note:'');
+      buildPaidCell(cell,classId,s.email,moNo,!!payment,payment?payment.date:'',payment?payment.note:'');
     }
   });
 }
@@ -1463,9 +1472,6 @@ async function removeAllAtt(classId, sessionDate){
 }
 
 function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
-  // Normalize: GAS may return ISO datetime (2026-05-07T17:...), keep date part only
-  if(paidDate && paidDate.length > 10) paidDate = paidDate.slice(0,10);
-
   cell.innerHTML='';
   var wrap=document.createElement('div');
   wrap.style='display:flex;flex-direction:column;gap:3px;padding:4px 2px;';
@@ -1483,31 +1489,22 @@ function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
 
   topRow.appendChild(cb); topRow.appendChild(lbl);
 
-  if(paid){
-    // Show date picker whenever paid — fall back to today only as display default
-    var displayDate = paidDate || new Date().toISOString().split('T')[0];
-    var di=document.createElement('input'); di.type='date'; di.value=displayDate;
+  if(paid&&paidDate){
+    var di=document.createElement('input'); di.type='date'; di.value=paidDate;
     di.style='font-size:10px;border:1px solid #86efac;border-radius:4px;padding:1px 4px;background:#f0fdf4;color:#166534;cursor:pointer;width:88px;';
     di.onchange=(function(cid,em,mo){return function(){updatePaidDate(cid,em,mo,this);};})(classId,email,moNo);
     topRow.appendChild(di);
   }
   wrap.appendChild(topRow);
 
-  if(paid){
-    // Note field ONLY shown when paid; only saves on blur if content actually changed
-    var ni=document.createElement('input'); ni.type='text'; ni.value=note||''; ni.placeholder='Note…';
-    ni.style='font-size:10px;border:1px solid var(--g200);border-radius:4px;padding:2px 6px;width:100%;color:var(--g600);outline:none;';
-    ni.onfocus=function(){this.style.borderColor='var(--red)';};
-    ni.dataset.original = note||'';
-    ni.onblur=(function(cid,em,mo,nEl,pd){return function(){
-      if(nEl.value === nEl.dataset.original) return; // no change — skip API call
-      var currentDate = pd || new Date().toISOString().split('T')[0];
-      api('markTuitionPaid',{classId:cid,studentEmail:em,monthNo:mo,paid:true,paidDate:currentDate,note:nEl.value})
-        .then(function(){ nEl.dataset.original=nEl.value; })
-        .catch(function(){});
-    };})(classId,email,moNo,ni,paidDate);
-    wrap.appendChild(ni);
-  }
+  var ni=document.createElement('input'); ni.type='text'; ni.value=note||''; ni.placeholder='Note…';
+  ni.style='font-size:10px;border:1px solid var(--g200);border-radius:4px;padding:2px 6px;width:100%;color:var(--g600);outline:none;';
+  ni.onfocus=function(){this.style.borderColor='var(--red)';};
+  ni.onblur=(function(cid,em,mo,nEl){return function(){
+    api('markTuitionPaid',{classId:cid,studentEmail:em,monthNo:mo,paid:true,paidDate:paidDate||new Date().toISOString().split('T')[0],note:nEl.value})
+      .catch(function(){});
+  };})(classId,email,moNo,ni);
+  wrap.appendChild(ni);
   cell.appendChild(wrap);
 }
 
@@ -2197,6 +2194,133 @@ function buildHWCell(cell,classId,email,hw,status,note){
 // ═══════════════════════════════════════════════════════
 // ⑤ PARTICIPATION REPORT
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// HOMEWORK BOOK
+// ═══════════════════════════════════════════════════════
+var hwBookCache = {};
+
+function buildHWBookTabs() {
+  var el = document.getElementById('hwBookTabs');
+  el.innerHTML = '';
+  if (!classData.length) return;
+  classData.forEach(function(cls, i) {
+    var b = document.createElement('button');
+    b.className = 'ctab' + (i === 0 ? ' active' : '');
+    b.textContent = cls.classId;
+    b.onclick = (function(cid, btn) { return function() { loadHWBook(cid, btn); }; })(cls.classId, b);
+    el.appendChild(b);
+  });
+  loadHWBook(classData[0].classId, el.firstChild);
+}
+
+async function loadHWBook(classId, btn) {
+  document.querySelectorAll('#hwBookTabs .ctab').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var el = document.getElementById('hwBookContent');
+  if (hwBookCache[classId]) { renderHWBook(classId); return; }
+  el.innerHTML = '<p style="padding:40px;text-align:center;color:var(--g400)">Loading…</p>';
+  try {
+    var r = await api('getHomeworkTracker', { classId: classId });
+    if (!r.success) { el.innerHTML = '<p style="color:var(--red);padding:20px">Error: ' + r.message + '</p>'; return; }
+    hwBookCache[classId] = r;
+    renderHWBook(classId);
+  } catch(e) { el.innerHTML = '<p style="color:var(--red);padding:20px">Connection error</p>'; }
+}
+
+function renderHWBook(classId) {
+  var data = hwBookCache[classId]; if (!data) return;
+  var el = document.getElementById('hwBookContent');
+  var hwList = data.homework || [];
+  var today = new Date().toISOString().split('T')[0];
+
+  if (!hwList.length) {
+    el.innerHTML = '<div class="card"><div style="padding:40px;text-align:center;color:var(--g400)"><div style="font-size:32px;margin-bottom:8px">📖</div><div style="font-weight:600">No homework assigned yet</div></div></div>';
+    return;
+  }
+
+  // Dedup by hwId
+  var seen = {}, pending = [], due = [];
+  hwList.forEach(function(hw) {
+    if (seen[hw.hwId]) return;
+    seen[hw.hwId] = true;
+    if (hw.deadline && hw.deadline < today) due.push(hw);
+    else pending.push(hw);
+  });
+
+  // Sort
+  pending.sort(function(a, b) { return (a.deadline||'') > (b.deadline||'') ? 1 : -1; });
+  due.sort(function(a, b) { return (a.deadline||'') < (b.deadline||'') ? 1 : -1; });
+
+  var typeNames = { W:'Writing', L:'Listening', S:'Speaking', V:'Vocab', R:'Reading', G:'Grammar' };
+  var skBg = { W:'#ffedd5', L:'#dbeafe', S:'#ede9fe', V:'#dcfce7', R:'#fce7f3', G:'#f3f4f6' };
+  var skCl = { W:'#7c2d12', L:'#1e40af', S:'#4c1d95', V:'#166534', R:'#9d174d', G:'#374151' };
+  var skBorder = { W:'#f97316', L:'#3b82f6', S:'#8b5cf6', V:'#22c55e', R:'#ec4899', G:'#6b7280' };
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function fmtDl(dl) {
+    if (!dl || dl.length < 10) return dl || '—';
+    var d = new Date(dl + 'T00:00:00');
+    var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    return days[d.getDay()] + ', ' + parseInt(dl.slice(8)) + '-' + months[d.getMonth()] + '-' + dl.slice(0, 4);
+  }
+
+  function hwCard(hw, isPast) {
+    var tname = typeNames[hw.type] || hw.type || '—';
+    var bg = skBg[hw.type] || '#f3f4f6';
+    var cl = skCl[hw.type] || '#374151';
+    var border = skBorder[hw.type] || '#6b7280';
+    var contentHtml = (hw.content || '\u2014').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    var sessDisp = hw.sessionDate ? fmtBrit(hw.sessionDate) : (hw.isExtra ? '⭐ Extra' : '—');
+    var dlDisp = fmtDl(hw.deadline || '');
+    var countdownTxt = '', countdownCol = '#6b7280';
+    if (!isPast && hw.deadline) {
+      var diff = Math.ceil((new Date(hw.deadline+'T00:00:00') - new Date(today+'T00:00:00')) / 86400000);
+      if (diff === 0) { countdownTxt = '⏰ Due today'; countdownCol = '#dc2626'; }
+      else if (diff === 1) { countdownTxt = '1 day left'; countdownCol = '#d97706'; }
+      else if (diff <= 3) { countdownTxt = diff + ' days left'; countdownCol = '#d97706'; }
+      else { countdownTxt = diff + ' days left'; countdownCol = '#16a34a'; }
+    }
+    return '<div style="background:white;border-radius:12px;padding:18px 20px;box-shadow:0 1px 8px rgba(0,0,0,.06);border-left:4px solid '+border+(isPast?';opacity:.85':'')+';">'
+      + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap;">'
+        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+          + '<span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:'+bg+';color:'+cl+'">'+tname+'</span>'
+          + (hw.isExtra ? '<span style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#fef9c3;color:#854d0e">⭐ Extra</span>' : '')
+          + '<span style="font-size:11px;color:var(--g400);">📅 Session: '+sessDisp+'</span>'
+        + '</div>'
+        + (countdownTxt ? '<span style="font-size:12px;font-weight:700;color:'+countdownCol+'">'+countdownTxt+'</span>' : '')
+        + (isPast ? '<span style="font-size:11px;font-weight:700;color:#9d9b96;">Past</span>' : '')
+      + '</div>'
+      + '<div style="font-size:13px;color:#1a1916;line-height:1.7;margin-bottom:12px;white-space:pre-wrap;word-break:break-word;">'+contentHtml+'</div>'
+      + '<div style="font-size:11px;color:var(--g400);">📅 Deadline: <strong style="color:'+(isPast?'#9d9b96':'#1a1916')+'">'+dlDisp+'</strong></div>'
+      + '</div>';
+  }
+
+  function section(title, arr, isPast, emptyMsg) {
+    var cards = arr.length
+      ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;">'+arr.map(function(h){return hwCard(h,isPast);}).join('')+'</div>'
+      : '<p style="color:var(--g400);font-size:13px;padding:16px 4px;">'+emptyMsg+'</p>';
+    return '<div style="margin-bottom:24px;">'
+      + '<div style="font-family:var(--serif);font-size:16px;font-weight:700;margin-bottom:14px;color:#1a1916;">'+title+'</div>'
+      + cards
+      + '</div>';
+  }
+
+  // Divider between pending and due sections
+  var divider = due.length
+    ? '<div style="display:flex;align-items:center;gap:10px;margin:28px 0 20px;">'
+      + '<div style="flex:1;height:1px;background:var(--g200);"></div>'
+      + '<div style="display:inline-flex;align-items:center;gap:7px;background:#1a1916;color:white;font-size:13px;font-weight:700;padding:6px 16px;border-radius:20px;">⏰ Past Homework ('+due.length+')</div>'
+      + '<div style="flex:1;height:1px;background:var(--g200);"></div>'
+      + '</div>'
+    : '';
+
+  el.innerHTML = '<div style="padding:4px 0;">'
+    + section('Pending Homework', pending, false, 'No upcoming homework for this class.')
+    + divider
+    + (due.length ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;">'+due.map(function(h){return hwCard(h,true);}).join('')+'</div>' : '')
+    + '</div>';
+}
+
 function buildPartTabs(){
   var el=document.getElementById('partTabs');
   el.innerHTML='<button class="ctab active" onclick="filterPart(\'all\',this)">All Classes</button>';
