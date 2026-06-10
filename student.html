@@ -251,12 +251,12 @@ table.pt tr:last-child td{border-bottom:none;}
       <div class="hw-grid" id="hwGrid">
         <p style="color:var(--g400);font-size:13px;">No upcoming homework.</p>
       </div>
-      <!-- Overdue -->
+      <!-- Past (overdue + done) — collapsible -->
       <div id="overdueSection" style="margin-top:28px;display:none;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
           <div style="flex:1;height:1px;background:var(--g200);"></div>
           <button id="overdueToggle" onclick="toggleOverdue()" style="display:inline-flex;align-items:center;gap:7px;background:#1a1916;color:white;font-size:13px;font-weight:700;padding:6px 14px;border-radius:20px;border:none;cursor:pointer;">
-            <span>⚠</span><span id="overdueTitle">Overdue homework</span><span id="overdueChevron" style="font-size:10px;transition:transform .25s;">▼</span>
+            <span>⚠</span><span id="overdueTitle">Past homework</span><span id="overdueChevron" style="font-size:10px;transition:transform .25s;">▼</span>
           </button>
           <div style="flex:1;height:1px;background:var(--g200);"></div>
         </div>
@@ -435,16 +435,16 @@ function renderHomework() {
   const all = sd.homework || [];
 
   // Pending = deadline not yet passed (daysLeft >= 0)
-  // Past = deadline passed (daysLeft < 0) — ALL of them, including Done
+  // Past    = deadline passed (daysLeft < 0) — ALL, including Done
   const hw        = all.filter(h => h.daysLeft >= 0);
   const hwOverdue = all.filter(h => h.daysLeft < 0);
 
-  // Sort pending by deadline asc
-  hw.sort((a,b) => (a.deadline||'') > (b.deadline||'') ? 1 : -1);
+  // Sort pending: earliest deadline first
+  hw.sort((a,b) => (a.deadline||'') > (b.deadline||'') ? 1 : -1);
   // Sort past: most recent deadline first
   hwOverdue.sort((a,b) => (a.deadline||'') < (b.deadline||'') ? 1 : -1);
 
-  // Overdue section visibility
+  // Show/hide overdue section
   const overdueSection = document.getElementById('overdueSection');
   if (hwOverdue.length) {
     overdueSection.style.display = '';
@@ -454,21 +454,21 @@ function renderHomework() {
   }
 
   if (!hw.length) {
-    document.getElementById('hwGrid').innerHTML = '<p style="color:var(--g400);font-size:13px;grid-column:1/-1;padding:40px;text-align:center;">🎉 No upcoming homework!</p>';
+    document.getElementById('hwGrid').innerHTML = '<p style="color:var(--g400);font-size:13px;grid-column:1/-1;padding:40px;text-align:center;">\uD83C\uDF89 No upcoming homework!</p>';
   }
 
   const typeNames = {W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const statusCfg = {
-    Done:    {bg:'#dcfce7',color:'#166534',icon:'✓ Done'},
-    Late:    {bg:'#fef9c3',color:'#854d0e',icon:'⏱ Late'},
-    Partial: {bg:'#dbeafe',color:'#1e40af',icon:'½ Partial'},
-    Undone:  {bg:'#fee2e2',color:'#991b1b',icon:'✗ Undone'},
+    Done:    {bg:'#dcfce7',color:'#166534',icon:'\u2713 Done'},
+    Late:    {bg:'#fef9c3',color:'#854d0e',icon:'\u23F1 Late'},
+    Partial: {bg:'#dbeafe',color:'#1e40af',icon:'\xBD Partial'},
+    Undone:  {bg:'#fee2e2',color:'#991b1b',icon:'\u2717 Undone'},
   };
 
   const renderCard = h => {
     const d = h.daysLeft;
-    const ct = d<0?'⚠ Overdue':d===0?'⏰ Due today!':d===1?'1 day left':`${d} days left`;
+    const ct = d<0?'\u26A0 Overdue':d===0?'\u23F0 Due today!':d===1?'1 day left':`${d} days left`;
     const urgent = d<=1;
     const st = h.status||'Undone';
     const stCfg = statusCfg[st]||statusCfg.Undone;
@@ -476,30 +476,26 @@ function renderHomework() {
     const statusBadge = showStatus
       ? `<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;background:${stCfg.bg};color:${stCfg.color};margin-top:8px">${stCfg.icon}</div>`
       : '';
-    let deadlineDisp = h.deadline||'—';
+    let deadlineDisp = h.deadline||'\u2014';
     if (h.deadline && h.deadline.length===10) {
       const dd = new Date(h.deadline+'T00:00:00');
       deadlineDisp = `${dayNames[dd.getDay()]}, ${fmtDFull(h.deadline)}`;
     }
-    const contentHtml = (h.content||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    const contentHtml = (h.content||'\u2014').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
     return `<div class="hw-card ${h.type||'W'}" style="${st==='Done'?'opacity:.65;border-left-color:#ccc':''}${h.isExtra&&st!=='Done'?';border-left-color:#eab308;background:linear-gradient(135deg,#fffef0 0%,white 60%)':''}${d<0&&st!=='Done'?';border-left-color:#dc2626;background:linear-gradient(135deg,#fff1f1 0%,white 70%)':''}">
       <div class="hw-top">
         <span class="hw-badge hb-${h.type||'W'}">${typeNames[h.type]||h.type}</span>
-        ${h.isExtra?'<span style="font-size:10px;background:#fef9c3;color:#854d0e;border-radius:5px;padding:2px 7px;font-weight:700">⭐ Extra</span>':''}
-        <span class="hw-countdown ${d<0&&st!=='Done'?'bad':urgent&&st!=='Done'?'warn':'good'}">${st==='Done'?'✓ Done':ct}</span>
+        ${h.isExtra?'<span style="font-size:10px;background:#fef9c3;color:#854d0e;border-radius:5px;padding:2px 7px;font-weight:700">\u2B50 Extra</span>':''}
+        <span class="hw-countdown ${d<0&&st!=='Done'?'bad':urgent&&st!=='Done'?'warn':'good'}">${st==='Done'?'\u2713 Done':ct}</span>
       </div>
       <div class="hw-content" style="white-space:pre-wrap;word-break:break-word">${contentHtml}</div>
-      <div class="hw-deadline">📅 Deadline: ${deadlineDisp}</div>
+      <div class="hw-deadline">\uD83D\uDCC5 Deadline: ${deadlineDisp}</div>
       ${statusBadge}
     </div>`;
   };
 
-  if (hw.length) {
-    document.getElementById('hwGrid').innerHTML = hw.map(renderCard).join('');
-  }
-  if (hwOverdue.length) {
-    document.getElementById('hwGridOverdue').innerHTML = hwOverdue.map(renderCard).join('');
-  }
+  if (hw.length) document.getElementById('hwGrid').innerHTML = hw.map(renderCard).join('');
+  if (hwOverdue.length) document.getElementById('hwGridOverdue').innerHTML = hwOverdue.map(renderCard).join('');
 }
 
 function toggleOverdue(){
