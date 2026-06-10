@@ -924,6 +924,7 @@ async function doDeleteHWFromSettings(){
       res.style.padding='8px 12px'; res.style.borderRadius='7px';
       res.textContent='✓ Đã xóa '+r.deleted+' homework. ('+label+')';
       delete hwTrackerCache[classId];
+      if(hwBookCache[classId]) delete hwBookCache[classId];
     } else {
       res.style.background='#fee2e2'; res.style.color='#991b1b';
       res.style.padding='8px 12px'; res.style.borderRadius='7px';
@@ -1553,15 +1554,14 @@ function switchStep(idx, btn) {
   document.querySelectorAll('.step-panel').forEach(function(p){p.classList.remove('active');});
   if(btn) btn.classList.add('active');
   document.getElementById('step'+idx).classList.add('active');
-  // When reaching HW step, show auto-computed skill + deadline info
-  if(idx===2) updateHWSessionInfo();
 }
 
 function updateHWSessionInfo(){
   var classId=currentFinishClass;
-  var date=document.getElementById('moDate').value;
+  var date=document.getElementById('moDate') ? document.getElementById('moDate').value : '';
   var info=document.getElementById('hwSessionInfo');
   var hwArea=document.getElementById('hwContentArea');
+  if(!info || !hwArea) return; // modal not yet rendered
   if(!date||!classId){info.textContent='Chọn ngày học trước.';return;}
   var sched=allSchedules[classId]||[];
   var thisSess=sched.find(function(s){return s.date===date;});
@@ -1827,6 +1827,7 @@ async function doFinish(){
       closeMo('moFinish');
       // Clear ALL caches so fresh data is fetched
       if(hwTrackerCache[classId]) delete hwTrackerCache[classId];
+      if(hwBookCache[classId]) delete hwBookCache[classId];
       delete tuitionCache[classId];
       delete tuitionCache[classId+'_totalMonths'];
       classData=[]; allSchedules={};
@@ -1869,6 +1870,7 @@ async function doAssignHW(){
     if(r.success){
       toast('Homework assigned ✓','ok'); closeMo('moHW');
       if(hwTrackerCache[classId])delete hwTrackerCache[classId];
+      if(hwBookCache[classId]) delete hwBookCache[classId];
       if(document.getElementById('sec-homework').classList.contains('active')) buildHWTrackerTabs();
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
@@ -1925,6 +1927,7 @@ async function doAssignExtraHW(){
       toast('Extra HW assigned ✓','ok');
       closeMo('moExtraHW');
       if(hwTrackerCache[classId]) delete hwTrackerCache[classId];
+      if(hwBookCache[classId]) delete hwBookCache[classId];
       if(document.getElementById('sec-homework').classList.contains('active')) buildHWTrackerTabs();
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
@@ -2168,6 +2171,7 @@ async function deleteHWCol(classId, sessionDate, type){
     if(r.success){
       toast('Đã xóa homework '+tname+' ('+dl+') ✓','ok');
       delete hwTrackerCache[classId];
+      if(hwBookCache[classId]) delete hwBookCache[classId];
       loadHWTracker(classId);
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
