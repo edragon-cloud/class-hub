@@ -1379,7 +1379,9 @@ function renderTuitionGrid(classId){
       var cell=document.getElementById(cellId);
       if(!cell)continue;
       var payment=s.monthPayments[moNo];
-      buildPaidCell(cell,classId,s.email,moNo,!!payment,payment?payment.date:'',payment?payment.note:'');
+      var pd = payment ? (payment.date||'') : '';
+      if (pd.length > 10) pd = pd.slice(0,10); // normalize ISO datetime → date-only
+      buildPaidCell(cell,classId,s.email,moNo,!!payment,pd,payment?payment.note:'');
     }
   });
 }
@@ -1472,6 +1474,9 @@ async function removeAllAtt(classId, sessionDate){
 }
 
 function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
+  // Normalize: GAS may return ISO datetime (2026-05-07T17:...), keep date part only
+  if (paidDate && paidDate.length > 10) paidDate = paidDate.slice(0,10);
+
   cell.innerHTML='';
   var wrap=document.createElement('div');
   wrap.style='display:flex;flex-direction:column;gap:3px;padding:4px 2px;';
@@ -1489,22 +1494,31 @@ function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
 
   topRow.appendChild(cb); topRow.appendChild(lbl);
 
-  if(paid&&paidDate){
-    var di=document.createElement('input'); di.type='date'; di.value=paidDate;
+  if (paid) {
+    // Always show date picker when paid; today is only a display default
+    var displayDate = paidDate || new Date().toISOString().split('T')[0];
+    var di=document.createElement('input'); di.type='date'; di.value=displayDate;
     di.style='font-size:10px;border:1px solid #86efac;border-radius:4px;padding:1px 4px;background:#f0fdf4;color:#166534;cursor:pointer;width:88px;';
     di.onchange=(function(cid,em,mo){return function(){updatePaidDate(cid,em,mo,this);};})(classId,email,moNo);
     topRow.appendChild(di);
   }
   wrap.appendChild(topRow);
 
-  var ni=document.createElement('input'); ni.type='text'; ni.value=note||''; ni.placeholder='Note…';
-  ni.style='font-size:10px;border:1px solid var(--g200);border-radius:4px;padding:2px 6px;width:100%;color:var(--g600);outline:none;';
-  ni.onfocus=function(){this.style.borderColor='var(--red)';};
-  ni.onblur=(function(cid,em,mo,nEl){return function(){
-    api('markTuitionPaid',{classId:cid,studentEmail:em,monthNo:mo,paid:true,paidDate:paidDate||new Date().toISOString().split('T')[0],note:nEl.value})
-      .catch(function(){});
-  };})(classId,email,moNo,ni);
-  wrap.appendChild(ni);
+  if (paid) {
+    // Note field only shown when paid; only saves if content actually changed
+    var ni=document.createElement('input'); ni.type='text'; ni.value=note||''; ni.placeholder='Note…';
+    ni.style='font-size:10px;border:1px solid var(--g200);border-radius:4px;padding:2px 6px;width:100%;color:var(--g600);outline:none;';
+    ni.onfocus=function(){this.style.borderColor='var(--red)';};
+    ni.dataset.original = note||'';
+    ni.onblur=(function(cid,em,mo,nEl,pd){return function(){
+      if (nEl.value === nEl.dataset.original) return; // no change — skip API
+      var currentDate = pd || new Date().toISOString().split('T')[0];
+      api('markTuitionPaid',{classId:cid,studentEmail:em,monthNo:mo,paid:true,paidDate:currentDate,note:nEl.value})
+        .then(function(){ nEl.dataset.original = nEl.value; })
+        .catch(function(){});
+    };})(classId,email,moNo,ni,paidDate);
+    wrap.appendChild(ni);
+  }
   cell.appendChild(wrap);
 }
 
