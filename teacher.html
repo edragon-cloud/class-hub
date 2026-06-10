@@ -1368,9 +1368,8 @@ function renderTuitionGrid(classId){
       var cell=document.getElementById(cellId);
       if(!cell)continue;
       var payment=s.monthPayments[moNo];
-      // Normalize date: GAS may store ISO datetime, extract date part only
       var pd = payment ? (payment.date||'') : '';
-      if(pd.length > 10) pd = pd.slice(0,10);
+      if(pd.length > 10) pd = pd.slice(0,10);  // normalize ISO datetime → date-only
       buildPaidCell(cell,classId,s.email,moNo,!!payment,pd,payment?payment.note:'');
     }
   });
@@ -1464,7 +1463,7 @@ async function removeAllAtt(classId, sessionDate){
 }
 
 function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
-  // Normalize paidDate: GAS may return ISO datetime (2026-05-07T17:...), extract date part only
+  // Normalize: GAS may return ISO datetime (2026-05-07T17:...), keep date part only
   if(paidDate && paidDate.length > 10) paidDate = paidDate.slice(0,10);
 
   cell.innerHTML='';
@@ -1485,7 +1484,7 @@ function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
   topRow.appendChild(cb); topRow.appendChild(lbl);
 
   if(paid){
-    // Always show date picker when paid; use paidDate if available, else today as display default
+    // Show date picker whenever paid — fall back to today only as display default
     var displayDate = paidDate || new Date().toISOString().split('T')[0];
     var di=document.createElement('input'); di.type='date'; di.value=displayDate;
     di.style='font-size:10px;border:1px solid #86efac;border-radius:4px;padding:1px 4px;background:#f0fdf4;color:#166534;cursor:pointer;width:88px;';
@@ -1495,14 +1494,13 @@ function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
   wrap.appendChild(topRow);
 
   if(paid){
-    // Note field: only save on blur if note actually changed, and only if already paid
+    // Note field ONLY shown when paid; only saves on blur if content actually changed
     var ni=document.createElement('input'); ni.type='text'; ni.value=note||''; ni.placeholder='Note…';
     ni.style='font-size:10px;border:1px solid var(--g200);border-radius:4px;padding:2px 6px;width:100%;color:var(--g600);outline:none;';
     ni.onfocus=function(){this.style.borderColor='var(--red)';};
     ni.dataset.original = note||'';
     ni.onblur=(function(cid,em,mo,nEl,pd){return function(){
-      // Only save if note changed and student is paid
-      if(nEl.value === nEl.dataset.original) return;
+      if(nEl.value === nEl.dataset.original) return; // no change — skip API call
       var currentDate = pd || new Date().toISOString().split('T')[0];
       api('markTuitionPaid',{classId:cid,studentEmail:em,monthNo:mo,paid:true,paidDate:currentDate,note:nEl.value})
         .then(function(){ nEl.dataset.original=nEl.value; })
