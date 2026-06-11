@@ -807,8 +807,8 @@ textarea.fc{resize:vertical;min-height:60px;}
       <span class="mnav-ico" style="background:var(--red);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;margin-top:-14px;box-shadow:0 4px 12px rgba(224,26,34,.5)">✅</span>
       <span class="mnav-lbl" style="color:white">End</span>
     </button>
-    <button class="mnav-btn" id="mnav-homework" onclick="mnavGo('homework',this)">
-      <span class="mnav-ico">📝</span><span class="mnav-lbl">Homework</span>
+    <button class="mnav-btn" id="mnav-hwbook" onclick="mnavGo('hwbook',this)">
+      <span class="mnav-ico">📖</span><span class="mnav-lbl">HW Book</span>
     </button>
     <button class="mnav-btn" id="mnav-more" onclick="toggleMnavMore(this)">
       <span class="mnav-ico">☰</span><span class="mnav-lbl">More</span>
@@ -818,6 +818,7 @@ textarea.fc{resize:vertical;min-height:60px;}
 
 <!-- More menu overlay -->
 <div class="mnav-more-menu" id="mnavMoreMenu">
+  <button class="mnav-more-item" onclick="mnavGo('homework',null);toggleMnavMore()"><span>📝</span> Homework Tracker</button>
   <button class="mnav-more-item" onclick="mnavGo('weekly',null);toggleMnavMore()"><span>🗓</span> Weekly Schedule</button>
   <button class="mnav-more-item" onclick="mnavGo('participation',null);toggleMnavMore()"><span>🙋</span> Participation</button>
   <button class="mnav-more-item" onclick="mnavGo('diligence',null);toggleMnavMore()"><span>🏆</span> Diligent Report</button>
@@ -2919,7 +2920,7 @@ function mnavGo(secId, btn){
   // Update mobile nav active state
   document.querySelectorAll('.mnav-btn').forEach(function(b){b.classList.remove('active');});
   // Map secId to mnav button
-  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework'};
+  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework',hwbook:'mnav-hwbook'};
   if(map[secId]) document.getElementById(map[secId]).classList.add('active');
   // Close more menu if open
   document.getElementById('mnavMoreMenu').classList.remove('show');
@@ -2950,7 +2951,7 @@ function toggleMnavMore(btn){
 var _origShowSec = showSec;
 showSec = function(id){
   _origShowSec(id);
-  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework'};
+  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework',hwbook:'mnav-hwbook'};
   document.querySelectorAll('.mnav-btn').forEach(function(b){b.classList.remove('active');});
   if(map[id]) document.getElementById(map[id]).classList.add('active');
 };
