@@ -3,74 +3,109 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>IELTS Hub — Random Draw</title>
+<title>EduPortal — Random Draw</title>
 <style>
-:root{--red:#E01A22;--gold:#f59e0b;--dark:#1a1916;--g50:#f8f7f5;--g100:#f0eeea;--g200:#e2e0db;--g400:#9d9b96;--g600:#5c5a56;}
+:root{
+  --blue:#4285F4;--blue-dk:#1a73e8;--blue-lt:#e8f0fe;
+  --green:#34A853;--yellow:#FBBC05;--red:#EA4335;
+  --surface:#ffffff;--bg:#f1f3f4;--border:#dadce0;
+  --on-bg:#202124;--on-sub:#5f6368;
+  --shadow:0 1px 2px rgba(60,64,67,.3),0 2px 6px rgba(60,64,67,.15);
+  --r:8px;
+}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--dark);font-family:'Helvetica Neue',Arial,sans-serif;min-height:100vh;color:white;}
+body{background:var(--bg);font-family:'Google Sans',Roboto,Arial,sans-serif;min-height:100vh;color:var(--on-bg);}
 
-.header{background:rgba(0,0,0,.5);border-bottom:1px solid rgba(255,255,255,.1);padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
-.logo{font-size:18px;font-weight:800;color:white;text-decoration:none;}
-.logo span{color:var(--red);}
+/* Header */
+.header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  box-shadow:0 1px 2px rgba(60,64,67,.1);
+}
+.logo{font-size:18px;font-weight:700;color:var(--on-bg);text-decoration:none;font-family:'Google Sans',sans-serif;flex-shrink:0;}
+.logo span{color:var(--blue);}
 .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;}
-select{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.2);outline:none;background:rgba(255,255,255,.1);color:white;}
-select option{background:#2a2825;color:white;}
-button{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;outline:none;}
-.btn-load{background:var(--red);color:white;}
-.btn-load:hover{background:#c4151c;}
-.btn-reset{background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.2);}
-.btn-add{background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.2);}
-.status-bar{font-size:12px;color:rgba(255,255,255,.45);margin-left:auto;white-space:nowrap;}
+select{
+  padding:7px 12px;border-radius:var(--r);font-size:13px;font-weight:500;
+  cursor:pointer;border:1px solid var(--border);outline:none;
+  background:var(--surface);color:var(--on-bg);
+}
+select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(66,133,244,.12);}
+.btn{padding:7px 16px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:none;outline:none;transition:all .15s;}
+.btn-load{background:var(--blue);color:white;}
+.btn-load:hover{background:var(--blue-dk);}
+.btn-reset{background:var(--surface);color:var(--on-sub);border:1px solid var(--border);}
+.btn-reset:hover{background:var(--bg);}
+.btn-add{background:var(--blue-lt);color:var(--blue);border:1px solid #a8c7fa;}
+.btn-add:hover{background:#d2e3fc;}
+.status-bar{font-size:12px;color:var(--on-sub);margin-left:auto;white-space:nowrap;}
 
-/* WALL */
-.wall{padding:24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
-.tile{border-radius:12px;padding:16px 12px;text-align:center;font-size:14px;font-weight:700;color:white;
-  transition:transform .15s,opacity .3s,box-shadow .15s;min-height:64px;
-  display:flex;align-items:center;justify-content:center;position:relative;}
-.tile.eliminated{opacity:.15;transform:scale(.9);}
-.tile.winner{box-shadow:0 0 28px rgba(255,215,0,.7);outline:3px solid gold;transform:scale(1.1);}
-.tile.spinning{animation:sf .12s infinite alternate;}
-@keyframes sf{from{filter:brightness(1.7);}to{filter:brightness(.6);}}
+/* Win log */
+.win-log{display:flex;gap:8px;flex-wrap:wrap;padding:14px 20px 0;}
+.win-badge{
+  padding:5px 14px;border-radius:100px;
+  background:linear-gradient(135deg,var(--yellow),#e6a800);
+  color:#3d2a00;font-size:12px;font-weight:700;
+}
 
-/* DISPLAY */
-.spin-display{margin:20px 24px 0;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.1);
-  border-radius:16px;padding:20px;text-align:center;}
-.spin-name{font-size:36px;font-weight:900;min-height:52px;letter-spacing:.5px;transition:color .1s;}
-.spin-btn{margin-top:14px;width:64px;height:64px;border-radius:50%;background:var(--red);
-  font-size:28px;cursor:pointer;border:none;color:white;transition:transform .15s,box-shadow .15s;}
-.spin-btn:hover{transform:scale(1.08);box-shadow:0 4px 20px rgba(224,26,34,.5);}
-.spin-btn:disabled{opacity:.5;cursor:default;transform:none;}
+/* Spin display */
+.spin-display{
+  margin:16px 20px 0;background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:24px;text-align:center;box-shadow:var(--shadow);
+}
+.spin-name{
+  font-size:36px;font-weight:700;min-height:52px;letter-spacing:.3px;
+  transition:color .1s;color:var(--on-bg);font-family:"Google Sans",sans-serif;
+}
+.spin-btn{
+  margin-top:16px;width:64px;height:64px;border-radius:50%;
+  background:var(--blue);font-size:26px;cursor:pointer;border:none;color:white;
+  transition:transform .15s,box-shadow .15s;box-shadow:0 2px 6px rgba(66,133,244,.4);
+}
+.spin-btn:hover{transform:scale(1.06);box-shadow:0 4px 16px rgba(66,133,244,.5);}
+.spin-btn:disabled{opacity:.45;cursor:default;transform:none;box-shadow:none;}
 
-/* ADD NAME */
-.add-row{display:flex;gap:8px;padding:0 24px;margin-top:16px;}
-.add-row input{flex:1;padding:8px 14px;border-radius:8px;background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.2);color:white;font-size:13px;outline:none;}
-.add-row input::placeholder{color:rgba(255,255,255,.35);}
-.add-row input:focus{border-color:rgba(255,255,255,.5);}
+/* Add row */
+.add-row{display:flex;gap:8px;padding:0 20px;margin-top:14px;}
+.add-row input{
+  flex:1;padding:8px 12px;border-radius:var(--r);
+  border:1px solid var(--border);color:var(--on-bg);font-size:13px;
+  background:var(--surface);outline:none;
+}
+.add-row input::placeholder{color:#9aa0a6;}
+.add-row input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(66,133,244,.1);}
 
-/* WINNERS LOG */
-.win-log{display:flex;gap:8px;flex-wrap:wrap;padding:16px 24px 0;}
-.win-badge{padding:5px 14px;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#d97706);
-  color:white;font-size:12px;font-weight:700;}
+/* Wall */
+.wall{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.tile{
+  border-radius:10px;padding:14px 10px;text-align:center;font-size:13px;font-weight:700;
+  color:white;transition:transform .15s,opacity .3s,box-shadow .15s;min-height:60px;
+  display:flex;align-items:center;justify-content:center;position:relative;
+  box-shadow:0 1px 3px rgba(0,0,0,.15);
+}
+.tile.eliminated{opacity:.12;transform:scale(.88);}
+.tile.winner{box-shadow:0 0 0 3px var(--yellow),0 4px 20px rgba(251,188,5,.5);transform:scale(1.08);}
+.tile.spinning{animation:sf .1s infinite alternate;}
+@keyframes sf{from{filter:brightness(1.6);}to{filter:brightness(.55);}}
 
-/* EMPTY */
-.empty{padding:80px 24px;text-align:center;color:rgba(255,255,255,.25);font-size:15px;line-height:1.8;}
-.loading{padding:60px;text-align:center;color:rgba(255,255,255,.35);font-size:14px;}
-@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
-.spinner{display:inline-block;font-size:28px;animation:spin 1s linear infinite;}
+/* Empty / loading */
+.empty{padding:72px 20px;text-align:center;color:var(--on-sub);font-size:14px;line-height:2;}
+.loading{padding:56px;text-align:center;color:var(--on-sub);font-size:13px;}
+@keyframes spin2{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+.spinner{display:inline-block;font-size:24px;animation:spin2 1s linear infinite;}
 .pulse{animation:pulse 1.5s ease-in-out infinite;}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <a href="teacher.html" class="logo">IELTS <span>Hub</span></a>
+  <a href="teacher.html" class="logo">Edu<span>Portal</span></a>
   <div class="controls">
     <select id="selClass" onchange="onClassChange()"><option value="">— Class —</option></select>
     <select id="selMonth"><option value="">— Month —</option></select>
-    <button class="btn-load" onclick="loadCandidates()">▶ Load</button>
-    <button class="btn-reset" onclick="resetDraw()">↺ Reset</button>
+    <button class="btn btn-load" onclick="loadCandidates()">▶ Load</button>
+    <button class="btn btn-reset" onclick="resetDraw()">↺ Reset</button>
   </div>
   <div class="status-bar" id="statusBar"></div>
 </div>
@@ -84,7 +119,7 @@ button{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:
 
 <div class="add-row">
   <input type="text" id="addInput" placeholder="+ Add a name manually…" onkeydown="if(event.key==='Enter')addName()"/>
-  <button class="btn-add" onclick="addName()">+ Add</button>
+  <button class="btn btn-add" onclick="addName()">+ Add</button>
 </div>
 
 <div class="wall" id="wall">

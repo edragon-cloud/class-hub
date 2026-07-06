@@ -6,57 +6,67 @@
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="IELTS Hub"/>
-<meta name="theme-color" content="#E01A22"/>
+<meta name="apple-mobile-web-app-title" content="EduPortal"/>
+<meta name="theme-color" content="#4285F4"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png"/>
 <link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png"/>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png"/>
-<title>IELTS Hub — Student</title>
+<title>EduPortal — Student</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
-:root{--red:#E01A22;--red-dark:#b01018;--rlight:#ff3a42;--white:#fff;--off:#f8f7f5;--g100:#f1f0ee;--g200:#e2e0dc;--g400:#9d9b96;--g600:#5c5a56;--g900:#1a1916;--sw:240px;--sh:0 2px 12px rgba(0,0,0,.08);--shm:0 4px 24px rgba(0,0,0,.12);}
+:root{
+  --blue:#4285F4;--blue-dk:#1a73e8;--blue-lt:#e8f0fe;
+  --green:#34A853;--yellow:#FBBC05;--red:#EA4335;
+  --primary:#4285F4;--primary-dk:#1a73e8;--primary-lt:#669df6;
+  --surface:#ffffff;--bg:#f1f3f4;--border:#dadce0;
+  --on-bg:#202124;--on-sub:#5f6368;
+  --white:#fff;--off:#f1f3f4;
+  --g100:#f1f3f4;--g200:#e8eaed;--g400:#9aa0a6;--g600:#5f6368;--g900:#202124;
+  --sw:240px;--sh:0 1px 2px rgba(60,64,67,.3),0 2px 6px rgba(60,64,67,.15);
+  --shm:0 1px 3px rgba(60,64,67,.3),0 4px 8px rgba(60,64,67,.15);
+}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--off);color:var(--g900);}
+html,body{height:100%;font-family:'Google Sans',Roboto,'DM Sans',sans-serif;background:var(--bg);color:var(--on-bg);}
 .layout{display:flex;min-height:100vh;}
-.sidebar{width:var(--sw);background:#1a1916;color:white;display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:40;}
-.sb-header{padding:24px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.sidebar{width:var(--sw);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:40;}
+.sb-header{padding:20px 16px 16px;border-bottom:1px solid var(--border);}
 .brand{display:flex;align-items:center;gap:10px;}
-.brand-icon{width:36px;height:36px;background:var(--red);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:18px;font-weight:900;}
-.brand-name{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;}
-.brand-name span{color:#ff3a42;}
-.user-info{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08);}
-.user-av{width:40px;height:40px;background:var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;margin-bottom:10px;}
-.user-name{font-size:14px;font-weight:600;}
-.user-class{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;}
+.brand-icon{width:36px;height:36px;background:var(--primary);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:18px;font-weight:900;color:white;}
+.brand-name{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--on-bg);}
+.brand-name span{color:var(--primary);}
+.user-info{padding:14px 16px;border-bottom:1px solid var(--border);}
+.user-av{width:40px;height:40px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:white;margin-bottom:10px;}
+.user-name{font-size:14px;font-weight:600;color:var(--on-bg);}
+.user-class{font-size:11px;color:var(--on-sub);margin-top:2px;}
 .nav{flex:1;padding:12px 10px;overflow-y:auto;}
-.nav-lbl{font-size:9px;letter-spacing:1.5px;color:rgba(255,255,255,.3);font-weight:600;padding:0 10px;margin:14px 0 6px;}
-.nav-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:9px;cursor:pointer;color:rgba(255,255,255,.5);font-size:13px;font-weight:500;transition:all .2s;margin-bottom:2px;}
-.nav-item:hover{background:rgba(255,255,255,.07);color:white;}
-.nav-item.active{background:var(--red);color:white;}
-.sb-footer{padding:12px 10px;border-top:1px solid rgba(255,255,255,.08);}
-.btn-logout{display:flex;align-items:center;gap:8px;width:100%;padding:10px;border:none;background:transparent;color:rgba(255,255,255,.4);cursor:pointer;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;transition:all .2s;}
-.btn-logout:hover{background:rgba(224,26,34,.15);color:#ff3a42;}
+.nav-lbl{font-size:9px;letter-spacing:1.5px;color:var(--on-sub);font-weight:600;padding:0 10px;margin:14px 0 6px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:9px;cursor:pointer;color:var(--on-sub);font-size:13px;font-weight:500;transition:all .2s;margin-bottom:2px;}
+.nav-item:hover{background:var(--g100);color:var(--on-bg);}
+.nav-item.active{background:var(--blue-lt);color:var(--primary);font-weight:700;}
+.sb-footer{padding:12px 10px;border-top:1px solid var(--border);}
+.btn-logout{display:flex;align-items:center;gap:8px;width:100%;padding:10px;border:none;background:transparent;color:var(--on-sub);cursor:pointer;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;transition:all .2s;}
+.btn-logout:hover{background:var(--blue-lt);color:var(--primary);}
 .main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;}
-.topbar{background:white;border-bottom:1px solid var(--g200);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:30;}
-.page-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;}
-.content{padding:28px;flex:1;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:30;box-shadow:0 1px 2px rgba(60,64,67,.1);}
+.page-title{font-family:'Google Sans',sans-serif;font-size:18px;font-weight:700;color:var(--on-bg);}
+.content{padding:24px;flex:1;background:var(--bg);}
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
-.stat-card{background:white;border-radius:14px;padding:20px;box-shadow:var(--sh);}
+.stat-card{background:var(--surface);border-radius:12px;padding:18px;box-shadow:var(--sh);border:1px solid var(--border);}
 .stat-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:12px;}
-.si-red{background:rgba(224,26,34,.1);}.si-green{background:rgba(34,197,94,.1);}.si-blue{background:rgba(59,130,246,.1);}.si-orange{background:rgba(249,115,22,.1);}
-.stat-val{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;line-height:1;}
+.si-red{background:rgba(66,133,244,.1);}.si-green{background:rgba(34,197,94,.1);}.si-blue{background:rgba(59,130,246,.1);}.si-orange{background:rgba(249,115,22,.1);}
+.stat-val{font-size:28px;font-weight:700;line-height:1;color:var(--on-bg);}
 .stat-lbl{font-size:12px;color:var(--g400);margin-top:4px;}
 .stat-sub{font-size:11px;margin-top:6px;font-weight:500;}
-.good{color:#22c55e;}.warn{color:#f97316;}.bad{color:var(--red);}
-.cal-card{background:white;border-radius:14px;box-shadow:var(--sh);overflow:hidden;}
+.good{color:#22c55e;}.warn{color:#f97316;}.bad{color:var(--primary);}
+.cal-card{background:var(--surface);border-radius:14px;box-shadow:var(--sh);overflow:hidden;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--g100);}
 .cal-dh{background:white;padding:10px 6px;text-align:center;font-size:10px;font-weight:600;color:var(--g400);letter-spacing:.5px;}
 .cal-day{background:white;padding:8px;min-height:90px;transition:background .15s;}
-.cal-day:hover{background:rgba(224,26,34,.03);}
+.cal-day:hover{background:rgba(66,133,244,.03);}
 .cal-day.other .dn{color:var(--g200);}
 .dn{font-size:13px;font-weight:500;margin-bottom:4px;}
-.today-dot{width:26px;height:26px;background:var(--red);color:white;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;}
+.today-dot{width:26px;height:26px;background:var(--primary);color:white;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;}
 .ev{font-size:12px;padding:3px 6px;border-radius:5px;margin-bottom:2px;white-space:normal;line-height:1.4;word-break:break-word;}
 .ev-present{background:#dcfce7;color:#166534;}.ev-absent{background:#fee2e2;color:#991b1b;}.ev-late{background:#fef9c3;color:#854d0e;}.ev-class{background:#dbeafe;color:#1e40af;}
 /* List view */
@@ -73,7 +83,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--off);col
 .vt-btn{padding:6px 12px;border:none;background:transparent;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--g400);transition:all .2s;}
 .vt-btn.active{background:white;color:var(--g900);box-shadow:0 1px 4px rgba(0,0,0,.1);}
 .hw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
-.hw-card{background:white;border-radius:12px;padding:18px;box-shadow:var(--sh);border-left:4px solid transparent;}
+.hw-card{background:var(--surface);border-radius:12px;padding:18px;box-shadow:var(--sh);border-left:4px solid transparent;}
 .hw-card.W{border-left-color:#f97316;}.hw-card.L{border-left-color:#3b82f6;}.hw-card.S{border-left-color:#8b5cf6;}.hw-card.V{border-left-color:#22c55e;}
 .hw-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
 .hw-badge{padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;}
@@ -81,13 +91,13 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--off);col
 .hw-countdown{font-size:12px;font-weight:700;}
 .hw-content{font-size:13px;color:var(--g900);margin-bottom:6px;line-height:1.5;}
 .hw-deadline{font-size:11px;color:var(--g400);}
-.tuition-card{background:white;border-radius:14px;padding:24px;box-shadow:var(--sh);}
+.tuition-card{background:var(--surface);border-radius:14px;padding:24px;box-shadow:var(--sh);}
 .progress-track{background:var(--g100);border-radius:99px;height:10px;overflow:hidden;margin:10px 0;}
-.progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--red),var(--rlight));transition:width .8s ease;}
+.progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--primary),var(--rlight));transition:width .8s ease;}
 .session-dots{display:flex;gap:5px;flex-wrap:wrap;margin-top:14px;}
 .sd{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;}
-.sd.done{background:var(--red);color:white;}.sd.absent{background:#fee2e2;color:#991b1b;}.sd.rem{background:var(--g100);color:var(--g400);}
-.part-card{background:white;border-radius:14px;box-shadow:var(--sh);overflow:hidden;}
+.sd.done{background:var(--primary);color:white;}.sd.absent{background:#fee2e2;color:#991b1b;}.sd.rem{background:var(--g100);color:var(--g400);}
+.part-card{background:var(--surface);border-radius:14px;box-shadow:var(--sh);overflow:hidden;}
 .acc-item{border-bottom:1px solid var(--g100);}.acc-item:last-child{border-bottom:none;}
 .acc-header{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:background .15s;}
 .acc-header:hover{background:var(--g100);}
@@ -108,7 +118,7 @@ table.pt tr:last-child td{border-bottom:none;}
 .section{display:none;}.section.active{display:block;}
 .loading{display:none;position:fixed;inset:0;background:rgba(248,247,245,.85);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
 .loading.show{display:flex;}
-.lspin{width:36px;height:36px;border:3px solid var(--g200);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;}
+.lspin{width:36px;height:36px;border:3px solid var(--g200);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:900px){.main{margin-left:0;}.sidebar{display:none;}.content{padding:14px;}}
@@ -142,17 +152,17 @@ table.pt tr:last-child td{border-bottom:none;}
 /* BOTTOM NAV */
 .mob-nav{
   display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;
-  background:#1a1916;padding:6px 0 env(safe-area-inset-bottom,6px);
-  border-top:1px solid rgba(255,255,255,.1);
+  background:var(--surface);padding:6px 0 env(safe-area-inset-bottom,6px);
+  border-top:1px solid var(--border);box-shadow:0 -1px 3px rgba(60,64,67,.1);
 }
 .mob-nav-inner{display:flex;justify-content:space-around;align-items:center;}
 .mnb{
   display:flex;flex-direction:column;align-items:center;gap:2px;
   background:none;border:none;cursor:pointer;
-  color:rgba(255,255,255,.4);padding:4px 6px;min-width:52px;
+  color:var(--on-sub);padding:4px 6px;min-width:52px;
   font-family:'DM Sans',sans-serif;transition:color .18s;
 }
-.mnb.active{color:white;}
+.mnb.active{color:var(--primary);}
 .mnb .mi{font-size:20px;line-height:1;}
 .mnb .ml{font-size:9px;font-weight:600;}
 @media(max-width:768px){.mob-nav{display:block;}}
@@ -167,13 +177,13 @@ table.pt tr:last-child td{border-bottom:none;}
 <div class="layout">
 <aside class="sidebar">
   <div class="sb-header">
-    <div class="brand"><div class="brand-icon">I</div><div class="brand-name">IELTS <span>Hub</span></div></div>
+    <div class="brand"><div class="brand-icon">I</div><div class="brand-name">Edu<span>Portal</span></div></div>
   </div>
   <div class="user-info">
     <div class="user-av" id="uAvatar">?</div>
     <div class="user-name" id="uName">Loading…</div>
     <div class="user-class" id="uClass">—</div>
-    <div id="uStudentId" style="display:none;background:rgba(255,255,255,.12);color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;margin-top:4px;font-family:monospace;letter-spacing:.5px;"></div>
+    <div id="uStudentId" style="display:none;background:var(--blue-lt);color:var(--primary);font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;margin-top:4px;font-family:monospace;letter-spacing:.5px;"></div>
   </div>
   <nav class="nav">
     <div class="nav-lbl">LEARNING</div>
@@ -193,7 +203,7 @@ table.pt tr:last-child td{border-bottom:none;}
   <div class="topbar">
     <div class="page-title" id="pageTitle">Schedule</div>
     <div id="notifWrap" style="display:none">
-      <span style="background:var(--red);color:white;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600">⚠ Attendance Warning</span>
+      <span style="background:var(--primary);color:white;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600">⚠ Attendance Warning</span>
     </div>
   </div>
 
@@ -246,23 +256,9 @@ table.pt tr:last-child td{border-bottom:none;}
 
     <!-- HOMEWORK -->
     <div id="section-homework" class="section">
-      <!-- Pending -->
       <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:16px;">Pending Homework</div>
       <div class="hw-grid" id="hwGrid">
         <p style="color:var(--g400);font-size:13px;">No upcoming homework.</p>
-      </div>
-      <!-- Past (overdue + done) — collapsible -->
-      <div id="overdueSection" style="margin-top:28px;display:none;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-          <div style="flex:1;height:1px;background:var(--g200);"></div>
-          <button id="overdueToggle" onclick="toggleOverdue()" style="display:inline-flex;align-items:center;gap:7px;background:#1a1916;color:white;font-size:13px;font-weight:700;padding:6px 14px;border-radius:20px;border:none;cursor:pointer;">
-            <span>⚠</span><span id="overdueTitle">Past homework</span><span id="overdueChevron" style="font-size:10px;transition:transform .25s;">▼</span>
-          </button>
-          <div style="flex:1;height:1px;background:var(--g200);"></div>
-        </div>
-        <div id="overdueBody">
-          <div class="hw-grid" id="hwGridOverdue"></div>
-        </div>
       </div>
     </div>
 
@@ -294,7 +290,7 @@ table.pt tr:last-child td{border-bottom:none;}
       <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:20px;">Account Settings</div>
       <div style="background:white;border-radius:14px;padding:28px;box-shadow:var(--sh);max-width:480px;">
         <div style="display:flex;align-items:center;gap:14px;padding-bottom:20px;border-bottom:1px solid var(--g100);margin-bottom:20px;">
-          <div id="settingsAvatar" style="width:52px;height:52px;background:var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:white;flex-shrink:0">?</div>
+          <div id="settingsAvatar" style="width:52px;height:52px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:white;flex-shrink:0">?</div>
           <div>
             <div id="settingsName" style="font-size:16px;font-weight:600;">—</div>
             <div id="settingsEmail" style="font-size:12px;color:var(--g400);margin-top:2px;">—</div>
@@ -305,17 +301,17 @@ table.pt tr:last-child td{border-bottom:none;}
         <div id="pwAlert" style="display:none;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;"></div>
         <div style="margin-bottom:14px;">
           <label style="display:block;font-size:12px;font-weight:600;color:var(--g600);margin-bottom:6px;">Current Password</label>
-          <input type="password" id="pwCurrent" placeholder="Enter current password" style="width:100%;padding:11px 14px;border:2px solid var(--g200);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s;" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--g200)'"/>
+          <input type="password" id="pwCurrent" placeholder="Enter current password" style="width:100%;padding:11px 14px;border:2px solid var(--g200);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--g200)'"/>
         </div>
         <div style="margin-bottom:14px;">
           <label style="display:block;font-size:12px;font-weight:600;color:var(--g600);margin-bottom:6px;">New Password</label>
-          <input type="password" id="pwNew" placeholder="Min 6 characters" style="width:100%;padding:11px 14px;border:2px solid var(--g200);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s;" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--g200)'"/>
+          <input type="password" id="pwNew" placeholder="Min 6 characters" style="width:100%;padding:11px 14px;border:2px solid var(--g200);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--g200)'"/>
         </div>
         <div style="margin-bottom:20px;">
           <label style="display:block;font-size:12px;font-weight:600;color:var(--g600);margin-bottom:6px;">Confirm New Password</label>
-          <input type="password" id="pwConfirm" placeholder="Repeat new password" style="width:100%;padding:11px 14px;border:2px solid var(--g200);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s;" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--g200)'"/>
+          <input type="password" id="pwConfirm" placeholder="Repeat new password" style="width:100%;padding:11px 14px;border:2px solid var(--g200);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--g200)'"/>
         </div>
-        <button onclick="changePassword()" style="width:100%;padding:13px;border:none;border-radius:9px;background:var(--red);color:white;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;" onmouseover="this.style.background='var(--red-dark)'" onmouseout="this.style.background='var(--red)'">
+        <button onclick="changePassword()" style="width:100%;padding:13px;border:none;border-radius:9px;background:var(--primary);color:white;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;" onmouseover="this.style.background='var(--primary-dk)'" onmouseout="this.style.background='var(--primary)'">
           Update Password
         </button>
       </div>
@@ -432,43 +428,32 @@ function renderCalendar() {
 }
 
 function renderHomework() {
-  const all = sd.homework || [];
-
-  // Pending = deadline not yet passed (daysLeft >= 0)
-  // Past    = deadline passed (daysLeft < 0) — ALL, including Done
-  const hw        = all.filter(h => h.daysLeft >= 0);
-  const hwOverdue = all.filter(h => h.daysLeft < 0);
-
-  // Sort pending: earliest deadline first
-  hw.sort((a,b) => (a.deadline||'') > (b.deadline||'') ? 1 : -1);
-  // Sort past: most recent deadline first
-  hwOverdue.sort((a,b) => (a.deadline||'') < (b.deadline||'') ? 1 : -1);
-
-  // Show/hide overdue section
-  const overdueSection = document.getElementById('overdueSection');
-  if (hwOverdue.length) {
-    overdueSection.style.display = '';
-    document.getElementById('overdueTitle').textContent = 'Past homework (' + hwOverdue.length + ')';
-  } else {
-    overdueSection.style.display = 'none';
-  }
-
+  // Show all HW: pending/overdue always visible; Done items hidden after 14 days
+  const hw = (sd.homework||[]).filter(h=>h.status!=='Done'||h.daysLeft>=-14);
   if (!hw.length) {
-    document.getElementById('hwGrid').innerHTML = '<p style="color:var(--g400);font-size:13px;grid-column:1/-1;padding:40px;text-align:center;">\uD83C\uDF89 No upcoming homework!</p>';
+    document.getElementById('hwGrid').innerHTML = '<p style="color:var(--g400);font-size:13px;grid-column:1/-1;padding:40px;text-align:center;">🎉 No upcoming homework!</p>';
+    return;
   }
+
+  // Sort: pending first (by deadline asc), Done last
+  hw.sort((a,b) => {
+    const aDone = (a.status==='Done'), bDone = (b.status==='Done');
+    if (aDone !== bDone) return aDone ? 1 : -1; // Done goes to bottom
+    return (a.deadline||'') > (b.deadline||'') ? 1 : -1; // earliest deadline first
+  });
 
   const typeNames = {W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const statusCfg = {
-    Done:    {bg:'#dcfce7',color:'#166534',icon:'\u2713 Done'},
-    Late:    {bg:'#fef9c3',color:'#854d0e',icon:'\u23F1 Late'},
-    Partial: {bg:'#dbeafe',color:'#1e40af',icon:'\xBD Partial'},
-    Undone:  {bg:'#fee2e2',color:'#991b1b',icon:'\u2717 Undone'},
+    Done:    {bg:'#dcfce7',color:'#166534',icon:'✓ Done'},
+    Late:    {bg:'#fef9c3',color:'#854d0e',icon:'⏱ Late'},
+    Partial: {bg:'#dbeafe',color:'#1e40af',icon:'½ Partial'},
+    Undone:  {bg:'#fee2e2',color:'#991b1b',icon:'✗ Undone'},
   };
 
-  const renderCard = h => {
+  document.getElementById('hwGrid').innerHTML = hw.map(h => {
     const d = h.daysLeft;
-    const ct = d<0?'\u26A0 Overdue':d===0?'\u23F0 Due today!':d===1?'1 day left':`${d} days left`;
+    const ct = d<0?'⚠ Overdue':d===0?'⏰ Due today!':d===1?'1 day left':`${d} days left`;
     const urgent = d<=1;
     const st = h.status||'Undone';
     const stCfg = statusCfg[st]||statusCfg.Undone;
@@ -476,34 +461,29 @@ function renderHomework() {
     const statusBadge = showStatus
       ? `<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;background:${stCfg.bg};color:${stCfg.color};margin-top:8px">${stCfg.icon}</div>`
       : '';
-    let deadlineDisp = h.deadline||'\u2014';
+
+    // Format deadline with weekday
+    let deadlineDisp = h.deadline||'—';
     if (h.deadline && h.deadline.length===10) {
       const dd = new Date(h.deadline+'T00:00:00');
-      deadlineDisp = `${dayNames[dd.getDay()]}, ${fmtDFull(h.deadline)}`;
+      const weekday = dayNames[dd.getDay()];
+      deadlineDisp = `${weekday}, ${fmtDFull(h.deadline)}`;
     }
-    const contentHtml = (h.content||'\u2014').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+
+    // Preserve line breaks from teacher input
+    const contentHtml = (h.content||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+
     return `<div class="hw-card ${h.type||'W'}" style="${st==='Done'?'opacity:.65;border-left-color:#ccc':''}${h.isExtra&&st!=='Done'?';border-left-color:#eab308;background:linear-gradient(135deg,#fffef0 0%,white 60%)':''}${d<0&&st!=='Done'?';border-left-color:#dc2626;background:linear-gradient(135deg,#fff1f1 0%,white 70%)':''}">
       <div class="hw-top">
         <span class="hw-badge hb-${h.type||'W'}">${typeNames[h.type]||h.type}</span>
-        ${h.isExtra?'<span style="font-size:10px;background:#fef9c3;color:#854d0e;border-radius:5px;padding:2px 7px;font-weight:700">\u2B50 Extra</span>':''}
-        <span class="hw-countdown ${d<0&&st!=='Done'?'bad':urgent&&st!=='Done'?'warn':'good'}">${st==='Done'?'\u2713 Done':ct}</span>
+        ${h.isExtra?'<span style="font-size:10px;background:#fef9c3;color:#854d0e;border-radius:5px;padding:2px 7px;font-weight:700">⭐ Extra</span>':''}
+        <span class="hw-countdown ${d<0&&st!=='Done'?'bad':urgent&&st!=='Done'?'warn':'good'}">${st==='Done'?'✓ Done':ct}</span>
       </div>
       <div class="hw-content" style="white-space:pre-wrap;word-break:break-word">${contentHtml}</div>
-      <div class="hw-deadline">\uD83D\uDCC5 Deadline: ${deadlineDisp}</div>
+      <div class="hw-deadline">📅 Deadline: ${deadlineDisp}</div>
       ${statusBadge}
     </div>`;
-  };
-
-  if (hw.length) document.getElementById('hwGrid').innerHTML = hw.map(renderCard).join('');
-  if (hwOverdue.length) document.getElementById('hwGridOverdue').innerHTML = hwOverdue.map(renderCard).join('');
-}
-
-function toggleOverdue(){
-  var body=document.getElementById('overdueBody');
-  var chevron=document.getElementById('overdueChevron');
-  var hidden=body.style.display==='none';
-  body.style.display=hidden?'':'none';
-  chevron.style.transform=hidden?'':'rotate(-90deg)';
+  }).join('');
 }
 
 function renderTuition() {
@@ -560,10 +540,10 @@ function renderTuition() {
       return '<div style="width:52px;height:52px;border-radius:9px;background:var(--g100);color:var(--g400);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">'+(i+1)+'</div>';
     }).join('');
 
-      return '<div style="background:'+(isCurrent?'white':isComplete?'#f0fdf4':isFuture?'#fafaf9':'white')+';border:1px solid '+(isCurrent?'var(--red)':isComplete?'#86efac':isFuture?'var(--g100)':'var(--g200)')+';border-radius:10px;padding:16px;margin-bottom:10px;'+(isFuture?'opacity:.7':'')+'" >'+
+      return '<div style="background:'+(isCurrent?'white':isComplete?'#f0fdf4':isFuture?'#fafaf9':'white')+';border:1px solid '+(isCurrent?'var(--primary)':isComplete?'#86efac':isFuture?'var(--g100)':'var(--g200)')+';border-radius:10px;padding:16px;margin-bottom:10px;'+(isFuture?'opacity:.7':'')+'" >'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">'+
         '<div style="font-size:14px;font-weight:700;">Month '+(mo+1)+
-          (isCurrent?' <span style="color:var(--red);font-size:11px;margin-left:6px">&#9679; Current</span>':
+          (isCurrent?' <span style="color:var(--primary);font-size:11px;margin-left:6px">&#9679; Current</span>':
            isComplete?' <span style="color:#16a34a;font-size:11px;margin-left:6px">&#10003; Complete</span>':
            isFuture?' <span style="color:var(--g400);font-size:11px;margin-left:6px">Upcoming</span>':'')+
         '</div>'+
@@ -588,7 +568,7 @@ function renderTuition() {
         '<div style="font-size:12px;color:var(--g400);margin-top:2px">'+total+' sessions counted &middot; '+att.filter(a=>a.status==='Absent').length+' absence(s)</div>'+
       '</div>'+
       '<div style="text-align:right">'+
-        '<div style="font-family:\'Playfair Display\',serif;font-size:28px;font-weight:700;color:var(--red)">'+monthsUsed+'</div>'+
+        '<div style="font-family:\'Playfair Display\',serif;font-size:28px;font-weight:700;color:var(--primary)">'+monthsUsed+'</div>'+
         '<div style="font-size:11px;color:var(--g400)">month(s) completed</div>'+
       '</div>'+
     '</div>'+monthsHtml;
@@ -680,8 +660,8 @@ function renderListView() {
       statusHtml = '<span style="font-size:11px;color:var(--g400)">Upcoming</span>';
     }
     const isToday = s.date===today;
-    return `<div class="list-row" style="${isToday?'background:rgba(224,26,34,.03)':''}">
-      <div class="list-date" style="${isToday?'color:var(--red);font-weight:700':''}">
+    return `<div class="list-row" style="${isToday?'background:rgba(66,133,244,.03)':''}">
+      <div class="list-date" style="${isToday?'color:var(--primary);font-weight:700':''}">
         <div>${dateStr}</div>
         <div class="ldate-day">${dayName} · ${s.dayLabel}</div>
       </div>
@@ -758,9 +738,9 @@ async function loadRanking() {
     const medals = ['🥇','🥈','🥉'];
     const rows = sorted.map((s,i)=>{
       const isMe = s.name === sess.FullName || s.email === sess.Email;
-      return `<tr style="${isMe?'background:rgba(224,26,34,.05);font-weight:700':''}">
+      return `<tr style="${isMe?'background:rgba(66,133,244,.05);font-weight:700':''}">
         <td style="padding:10px 14px;border-bottom:1px solid var(--g100)">${medals[i]||i+1}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid var(--g100)">${s.name}${isMe?' <span style="color:var(--red);font-size:11px">(you)</span>':''}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid var(--g100)">${s.name}${isMe?' <span style="color:var(--primary);font-size:11px">(you)</span>':''}</td>
         <td style="padding:10px 14px;border-bottom:1px solid var(--g100);text-align:center">
           ${s.avgScore>0?`<span style="background:${s.avgScore>=8?'#dcfce7':s.avgScore>=5?'#fef9c3':'#fee2e2'};color:${s.avgScore>=8?'#166534':s.avgScore>=5?'#854d0e':'#991b1b'};padding:3px 9px;border-radius:6px;font-size:12px;font-weight:700">${s.avgScore}</span>`:'<span style="color:var(--g400)">—</span>'}
         </td>
