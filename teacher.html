@@ -1314,11 +1314,35 @@ function renderTuitionGrid(classId){
     .filter(function(s){return s.date&&s.dayLabel.toLowerCase().replace(/ /g,'').replace('day','')!=='0';})
     .map(function(s){return s.date;});
 
-  // ── Header row 1: Month groups
+  // ── Track which months are collapsed
+  if(!window._tuitionCollapsed) window._tuitionCollapsed={};
+  var clsKey=classId;
+
+  // ── Header row 1: Month groups (with collapse toggle)
   var monthHeaders='<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;min-width:170px;box-shadow:2px 0 8px rgba(0,0,0,.15)"></th>';
   for(var mo=1;mo<=maxMonths;mo++){
     var bg=mo%2===0?'#e8e6e2':'var(--g100)';
-    monthHeaders+='<th colspan="9" style="padding:7px 4px;text-align:center;background:'+bg+';border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700;color:var(--g600)">Month '+mo+'</th>';
+    var moKey=clsKey+'_'+mo;
+    var isCollapsed=!!window._tuitionCollapsed[moKey];
+
+    // Check if this month is fully complete (all students paid + 8 sessions done)
+    var allPaid=students.every(function(s){return !!s.monthPayments[String(mo)];});
+    var allComplete=students.every(function(s){return s.total>=(mo*8);});
+    var canCollapse=allPaid&&allComplete;
+
+    var chevron=isCollapsed?'▶':'▼';
+    var colLabel=isCollapsed?'Mo '+mo:'Month '+mo;
+    var titleAttr=isCollapsed?'Click to expand Month '+mo:'Click to collapse Month '+mo;
+    var colSpan=isCollapsed?1:9;
+    monthHeaders+='<th colspan="'+colSpan+'" '+
+      'data-mo-hd="'+moKey+'" data-toggle-cls="'+classId+'" data-toggle-mo="'+mo+'" data-toggle-key="'+clsKey+'" '+
+      'class="'+(canCollapse?'tuition-mo-toggle':'')+'" '+
+      'style="padding:7px 4px;text-align:center;background:'+bg+';border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:11px;font-weight:700;color:var(--g600);'+
+      (canCollapse?'cursor:pointer;user-select:none;':'')+'">'+
+      (canCollapse?'<span style="font-size:9px;opacity:.6;margin-right:3px">'+chevron+'</span>':'')+
+      colLabel+
+      (canCollapse&&!isCollapsed?'<span style="font-size:9px;opacity:.4;margin-left:4px">hide</span>':'')+
+    '</th>';
   }
 
   // ── Header row 2: Session numbers + dates + Remove All button
@@ -1326,6 +1350,14 @@ function renderTuitionGrid(classId){
   var sessHeaders='<th style="padding:0;background:var(--g900);position:sticky;left:0;z-index:10;box-shadow:2px 0 8px rgba(0,0,0,.15)"></th>';
   for(var mo2=1;mo2<=maxMonths;mo2++){
     var bg2=mo2%2===0?'#eae8e4':'#f5f4f2';
+    var moKey2=clsKey+'_'+mo2;
+    var isMoCollapsed=!!window._tuitionCollapsed[moKey2];
+    if(isMoCollapsed){
+      // Collapsed: single empty header cell
+      sessHeaders+='<th data-mo-col="'+moKey2+'" style="width:0;padding:0;border:none"></th>';
+      sessHeaders+='<th data-mo-paid="'+moKey2+'" style="display:none"></th>';
+      continue;
+    }
     for(var si=1;si<=8;si++){
       var gIdx=(mo2-1)*8+(si-1);
       var sd=schedDates[gIdx]||'';
@@ -1342,7 +1374,7 @@ function renderTuitionGrid(classId){
           'style="margin-top:2px;padding:1px 3px;border:none;background:#fee2e2;color:#991b1b;border-radius:3px;font-size:8px;cursor:pointer;line-height:1.2;width:28px">✕All</button>':'')+
       '</th>';
     }
-    sessHeaders+='<th style="padding:4px 6px;text-align:center;background:#f0fdf4;border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:10px;color:#166534;white-space:nowrap;min-width:100px">💳 Paid?</th>';
+    sessHeaders+='<th data-mo-paid="'+moKey2+'" style="padding:4px 6px;text-align:center;background:#f0fdf4;border-right:2px solid var(--g200);border-left:1px solid var(--g200);font-size:10px;color:#166534;white-space:nowrap;min-width:100px">💳 Paid?</th>';
   }
 
   // ── Rows
@@ -1351,6 +1383,13 @@ function renderTuitionGrid(classId){
   var rows=students.map(function(s){
     var cells='';
     for(var mo3=0;mo3<maxMonths;mo3++){
+      var moKey3=clsKey+'_'+(mo3+1);
+      var isMoRowCollapsed=!!window._tuitionCollapsed[moKey3];
+      if(isMoRowCollapsed){
+        cells+='<td data-mo-col="'+moKey3+'" style="padding:0;width:0"></td>';
+        cells+='<td data-mo-paid="'+moKey3+'" style="padding:3px 6px;border-right:2px solid var(--g200);border-left:1px solid var(--g200);background:#f0fdf4;font-size:10px;text-align:center;color:var(--g400)">—</td>';
+        continue;
+      }
       for(var si2=0;si2<8;si2++){
         var gIdx2=mo3*8+si2;
         var sessDate=schedDates[gIdx2]||'';
@@ -1415,6 +1454,24 @@ function renderTuitionGrid(classId){
     }
   });
 }
+
+// ── Toggle collapse/expand a month column in tuition grid
+function toggleTuitionMonth(clsKey, mo, classId) {
+  var moKey = clsKey + '_' + mo;
+  if (!window._tuitionCollapsed) window._tuitionCollapsed = {};
+  window._tuitionCollapsed[moKey] = !window._tuitionCollapsed[moKey];
+  renderTuitionGrid(classId);
+}
+
+// Event delegation for tuition month header clicks
+document.addEventListener('click', function(e) {
+  var th = e.target.closest('.tuition-mo-toggle');
+  if (!th) return;
+  var clsKey = th.getAttribute('data-toggle-key');
+  var mo     = parseInt(th.getAttribute('data-toggle-mo'));
+  var cid    = th.getAttribute('data-toggle-cls');
+  if (clsKey && mo && cid) toggleTuitionMonth(clsKey, mo, cid);
+});
 
 // ── Inline attendance dropdown handler (optimistic update)
 function quickMarkAtt(sel){
