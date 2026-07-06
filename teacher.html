@@ -59,6 +59,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--o
   font-size:9px;font-weight:700;letter-spacing:1.2px;
   padding:3px 8px;border-radius:20px;border:1px solid #a8c7fa;
 }
+.g-red{color:#EA4335;}.g-blue{color:#4285F4;}.g-green{color:#34A853;}.g-yellow{color:#FBBC05;}
 .nav{flex:1;padding:8px;overflow-y:auto;}
 .nlbl{
   font-size:9px;letter-spacing:1.5px;color:var(--on-sub);
@@ -367,7 +368,7 @@ textarea.fc{resize:vertical;min-height:60px;}
   <div class="sb-top">
     <div class="brand">
       <div class="bi">I</div>
-      <div class="bn">Edu<em>Portal</em></div>
+      <div class="bn"><span style="color:#4285F4">E</span><span style="color:#EA4335">d</span><span style="color:#FBBC05">u</span><span style="color:#34A853">Portal</span></div>
     </div>
     <div class="tbadge">⚡ TEACHER</div>
   </div>
@@ -836,7 +837,7 @@ textarea.fc{resize:vertical;min-height:60px;}
     </button>
     <button class="mnav-btn" id="mnav-endsession" onclick="openFinishFor(null)" style="color:var(--primary)">
       <span class="mnav-ico" style="background:var(--primary);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;margin-top:-14px;box-shadow:0 4px 12px rgba(66,133,244,.5)">✅</span>
-      <span class="mnav-lbl" style="color:white">End</span>
+      <span class="mnav-lbl" style="color:var(--primary)">End</span>
     </button>
     <button class="mnav-btn" id="mnav-hwbook" onclick="mnavGo('hwbook',this)">
       <span class="mnav-ico">📖</span><span class="mnav-lbl">HW Book</span>
