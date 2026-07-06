@@ -6,8 +6,8 @@
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="EduPortal"/>
-<meta name="theme-color" content="#4285F4"/>
+<meta name="apple-mobile-web-app-title" content="IELTS Hub"/>
+<meta name="theme-color" content="#E01A22"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png"/>
 <link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png"/>
@@ -15,74 +15,68 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
-<title>EduPortal — Teacher Dashboard</title>
+<title>IELTS Hub — Teacher Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fraunces:opsz,wght@9..144,700;9..144,900&display=swap" rel="stylesheet"/>
 <style>
 /* ═══════════════════════════════════════ TOKENS */
 :root {
-  --primary:#4285F4; --primary-dk:#1a73e8; --primary-tint:#e8f0fe;
-  --green:#34A853; --yellow:#FBBC05; --red:#EA4335;
-  --surface:#ffffff; --bg:#f1f3f4; --border:#dadce0;
-  --on-bg:#202124; --on-sub:#5f6368;
-  --off:#f1f3f4; --off2:#e8eaed;
-  --g50:#f8f9fa; --g100:#f1f3f4; --g200:#e8eaed; --g300:#dadce0;
-  --g400:#9aa0a6; --g600:#5f6368; --g800:#3c4043; --g900:#202124;
+  --red:#E01A22; --rdk:#b01018; --red-tint:#fff1f2;
+  --off:#f5f4f1; --off2:#eeecea;
+  --g50:#fafaf9; --g100:#f1f0ee; --g200:#e2e0dc; --g300:#c8c5bf;
+  --g400:#9d9b96; --g600:#5c5a56; --g800:#2e2d2a; --g900:#1a1916;
   --sw:220px;
-  --sh:0 1px 2px rgba(60,64,67,.3),0 2px 6px rgba(60,64,67,.15);
-  --shm:0 1px 3px rgba(60,64,67,.3),0 4px 8px rgba(60,64,67,.15);
-  --r:8px;
-  --font:'Google Sans',Roboto,'Plus Jakarta Sans',sans-serif;
-  --serif:'Google Sans','Fraunces',serif;
+  --sh:0 1px 3px rgba(0,0,0,.07),0 4px 16px rgba(0,0,0,.06);
+  --shm:0 4px 24px rgba(0,0,0,.13);
+  --r:11px;
+  --font:'Plus Jakarta Sans',sans-serif;
+  --serif:'Fraunces',serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--on-bg);font-size:14px;}
+html,body{height:100%;font-family:var(--font);background:var(--off);color:var(--g900);font-size:14px;}
 /* ═══════════════════════════════════════ LAYOUT */
 .layout{display:flex;min-height:100vh;}
 /* ── Sidebar */
 .sidebar{
-  width:var(--sw);background:var(--surface);color:var(--on-bg);
-  border-right:1px solid var(--border);
+  width:var(--sw);background:var(--g900);color:white;
   display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:40;
 }
-.sb-top{padding:18px 14px 12px;border-bottom:1px solid var(--border);}
+.sb-top{padding:20px 16px 14px;border-bottom:1px solid rgba(255,255,255,.07);}
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .bi{
-  width:32px;height:32px;background:var(--primary);border-radius:8px;
+  width:32px;height:32px;background:var(--red);border-radius:8px;
   display:flex;align-items:center;justify-content:center;
   font-family:var(--serif);font-size:16px;font-weight:900;flex-shrink:0;
 }
-.bn{font-family:var(--serif);font-size:15px;font-weight:700;line-height:1.1;color:var(--on-bg);}
-.bn em{color:var(--primary);font-style:normal;}
+.bn{font-family:var(--serif);font-size:15px;font-weight:700;line-height:1.1;}
+.bn em{color:#ff4a50;font-style:normal;}
 .tbadge{
   display:inline-flex;align-items:center;gap:5px;
-  background:var(--primary-tint);color:var(--primary);
+  background:rgba(224,26,34,.2);color:#ff9ea2;
   font-size:9px;font-weight:700;letter-spacing:1.2px;
-  padding:3px 8px;border-radius:20px;border:1px solid #a8c7fa;
+  padding:3px 8px;border-radius:20px;border:1px solid rgba(224,26,34,.3);
 }
-.g-red{color:#EA4335;}.g-blue{color:#4285F4;}.g-green{color:#34A853;}.g-yellow{color:#FBBC05;}
 .nav{flex:1;padding:8px;overflow-y:auto;}
 .nlbl{
-  font-size:9px;letter-spacing:1.5px;color:var(--on-sub);
+  font-size:9px;letter-spacing:1.5px;color:rgba(255,255,255,.25);
   font-weight:700;padding:0 8px;margin:14px 0 5px;
   text-transform:uppercase;
 }
 .ni{
   display:flex;align-items:center;gap:9px;padding:9px 10px;
-  border-radius:8px;cursor:pointer;color:var(--on-sub);
+  border-radius:8px;cursor:pointer;color:rgba(255,255,255,.45);
   font-size:12.5px;font-weight:500;transition:all .18s;
   margin-bottom:1px;border:none;background:transparent;width:100%;text-align:left;
 }
-.ni:hover{background:var(--g100);color:var(--on-bg);}
-.ni.active{background:var(--primary-tint);color:var(--primary);font-weight:700;}
+.ni:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.85);}
+.ni.active{background:var(--red);color:white;font-weight:600;}
 .ni-ico{font-size:14px;flex-shrink:0;width:18px;text-align:center;}
-.sb-bot{padding:8px;border-top:1px solid var(--border);}
+.sb-bot{padding:8px;border-top:1px solid rgba(255,255,255,.07);}
 /* ── Main */
 .main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-width:0;}
 .topbar{
-  background:var(--surface);border-bottom:1px solid var(--border);
+  background:white;border-bottom:1px solid var(--g200);
   padding:12px 24px;display:flex;align-items:center;
   justify-content:space-between;position:sticky;top:0;z-index:30;
-  box-shadow:0 1px 2px rgba(60,64,67,.1);
 }
 .ptitle{font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:-.3px;}
 .content{padding:24px;flex:1;}
@@ -127,16 +121,16 @@ tr:hover td{background:var(--g50);}
   background:white;cursor:pointer;font-family:var(--font);
   font-size:12px;font-weight:600;color:var(--g600);transition:all .18s;
 }
-.ctab:hover{border-color:var(--primary);color:var(--primary);}
-.ctab.active{background:var(--primary);border-color:var(--primary);color:white;}
+.ctab:hover{border-color:var(--red);color:var(--red);}
+.ctab.active{background:var(--red);border-color:var(--red);color:white;}
 /* ═══════════════════════════════════════ BUTTONS */
 .btn{
   padding:7px 14px;border-radius:8px;font-family:var(--font);
   font-size:12.5px;font-weight:600;cursor:pointer;
   transition:all .18s;border:none;display:inline-flex;align-items:center;gap:5px;
 }
-.btn-r{background:var(--primary);color:white;} .btn-r:hover{background:var(--primary-dk);}
-.btn-o{background:transparent;border:1.5px solid var(--primary);color:var(--primary);} .btn-o:hover{background:var(--primary-tint);}
+.btn-r{background:var(--red);color:white;} .btn-r:hover{background:var(--rdk);}
+.btn-o{background:transparent;border:1.5px solid var(--red);color:var(--red);} .btn-o:hover{background:var(--red-tint);}
 .btn-g{background:white;border:1.5px solid var(--g200);color:var(--g600);} .btn-g:hover{border-color:var(--g400);color:var(--g900);}
 .btn-sm{padding:4px 10px;font-size:11px;border-radius:6px;}
 /* ═══════════════════════════════════════ FORM */
@@ -145,7 +139,7 @@ tr:hover td{background:var(--g50);}
   border-radius:8px;font-family:var(--font);font-size:13px;outline:none;
   transition:border-color .18s;background:white;
 }
-.fc:focus{border-color:var(--primary);}
+.fc:focus{border-color:var(--red);}
 textarea.fc{resize:vertical;min-height:60px;}
 .fl{display:block;font-size:11.5px;font-weight:600;color:var(--g600);margin-bottom:4px;}
 .fg{margin-bottom:12px;}
@@ -168,7 +162,7 @@ textarea.fc{resize:vertical;min-height:60px;}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .toast{
   position:fixed;bottom:20px;right:20px;z-index:999;
-  background:var(--on-bg);color:white;padding:10px 16px;
+  background:var(--g900);color:white;padding:10px 16px;
   border-radius:8px;font-size:12.5px;font-weight:500;
   box-shadow:var(--shm);transform:translateY(60px);opacity:0;transition:all .3s;
 }
@@ -216,13 +210,13 @@ textarea.fc{resize:vertical;min-height:60px;}
 .spin-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px;}
 .spin-btn{
   width:130px;height:130px;border-radius:50%;
-  background:linear-gradient(135deg,var(--primary),#669df6);
+  background:linear-gradient(135deg,var(--red),#ff3a42);
   color:white;font-size:32px;border:none;cursor:pointer;
-  box-shadow:0 6px 24px rgba(66,133,244,.4);transition:transform .15s;
+  box-shadow:0 6px 24px rgba(224,26,34,.4);transition:transform .15s;
   font-family:var(--serif);font-weight:900;display:flex;align-items:center;justify-content:center;
 }
 .spin-btn:hover{transform:scale(1.04);}
-.spin-result{font-family:var(--serif);font-size:22px;font-weight:900;color:var(--primary);min-height:30px;text-align:center;}
+.spin-result{font-family:var(--serif);font-size:22px;font-weight:900;color:var(--red);min-height:30px;text-align:center;}
 /* ═══════════════════════════════════════ HW ENTRY */
 .hw-entry{display:flex;gap:7px;margin-bottom:8px;align-items:flex-start;}
 .hw-entry .fc{font-size:13px;}
@@ -238,23 +232,23 @@ textarea.fc{resize:vertical;min-height:60px;}
   padding:4px 8px;border:1.5px solid var(--g200);border-radius:6px;
   font-family:var(--font);font-size:12px;outline:none;cursor:pointer;background:white;
 }
-.asel:focus{border-color:var(--primary);}
+.asel:focus{border-color:var(--red);}
 /* ═══════════════════════════════════════ PART SCORE */
 .sinp{
   width:54px;padding:4px 7px;border:1.5px solid var(--g200);border-radius:6px;
   font-family:var(--font);font-size:13px;font-weight:600;text-align:center;outline:none;
 }
-.sinp:focus{border-color:var(--primary);}
+.sinp:focus{border-color:var(--red);}
 /* ═══════════════════════════════════════ PROGRESS BAR */
 .pbar{background:var(--g100);border-radius:99px;height:5px;overflow:hidden;}
-.pbar-fill{height:100%;border-radius:99px;background:var(--primary);}
+.pbar-fill{height:100%;border-radius:99px;background:var(--red);}
 /* ═══════════════════════════════════════ END SESSION STEPS */
 .step-tabs{display:flex;gap:0;border-bottom:2px solid var(--g100);margin-bottom:18px;}
 .step-tab{
   padding:8px 16px;font-size:12.5px;font-weight:600;color:var(--g400);
   cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .18s;
 }
-.step-tab.active{color:var(--primary);border-color:var(--primary);}
+.step-tab.active{color:var(--red);border-color:var(--red);}
 .step-panel{display:none;} .step-panel.active{display:block;}
 /* ═══════════════════════════════════════ ARCHIVE TOGGLE */
 .arc-toggle{display:flex;background:var(--g100);border-radius:8px;padding:3px;margin-bottom:18px;width:fit-content;}
@@ -324,7 +318,7 @@ textarea.fc{resize:vertical;min-height:60px;}
 .mobile-nav{
   display:none;
   position:fixed;bottom:0;left:0;right:0;z-index:50;
-  background:var(--surface);
+  background:var(--g900);
   padding:8px 0 env(safe-area-inset-bottom,8px);
   border-top:1px solid rgba(255,255,255,.1);
 }
@@ -337,13 +331,13 @@ textarea.fc{resize:vertical;min-height:60px;}
   color:rgba(255,255,255,.4);padding:4px 8px;min-width:50px;
   font-family:var(--font);transition:color .18s;
 }
-.mnav-btn.active{color:var(--primary);}
+.mnav-btn.active{color:white;}
 .mnav-btn .mnav-ico{font-size:20px;line-height:1;}
 .mnav-btn .mnav-lbl{font-size:9px;font-weight:600;letter-spacing:.3px;}
 /* More menu */
 .mnav-more-menu{
   display:none;position:fixed;bottom:60px;right:0;left:0;z-index:60;
-  background:var(--surface);border-top:1px solid var(--border);
+  background:var(--g900);border-top:1px solid rgba(255,255,255,.1);
   padding:8px;
 }
 .mnav-more-menu.show{display:block;}
@@ -354,10 +348,53 @@ textarea.fc{resize:vertical;min-height:60px;}
   border:none;background:transparent;width:100%;text-align:left;
   font-family:var(--font);
 }
-.mnav-more-item:hover,.mnav-more-item.active{background:var(--primary-tint);color:var(--primary);}
+.mnav-more-item:hover,.mnav-more-item.active{background:var(--red);color:white;}
 @media(max-width:768px){
   .mobile-nav{display:block;}
 }
+
+/* ── Google Material Light Overrides ─────────────────── */
+:root {
+  --primary:#4285F4; --primary-dk:#1a73e8; --primary-tint:#e8f0fe;
+  --g-green:#34A853; --g-yellow:#FBBC05; --g-red:#EA4335;
+  --surface:#ffffff; --bg:#f1f3f4; --border:#dadce0;
+  --on-bg:#202124; --on-sub:#5f6368;
+}
+/* Sidebar: dark → light */
+.sidebar { background: var(--surface) !important; color: var(--on-bg) !important; border-right: 1px solid var(--border); }
+.sb-top  { border-bottom: 1px solid var(--border) !important; }
+.nlbl    { color: var(--on-sub) !important; }
+.ni      { color: var(--on-sub) !important; }
+.ni:hover{ background: var(--bg) !important; color: var(--on-bg) !important; }
+.ni.active { background: var(--primary-tint) !important; color: var(--primary) !important; }
+.ni-ico  { /* inherit */ }
+.bn      { color: var(--on-bg) !important; }
+.bn em   { color: var(--primary) !important; }
+.tbadge  { background: var(--primary-tint) !important; color: var(--primary) !important; border-color: #a8c7fa !important; }
+.sb-bot  { border-top: 1px solid var(--border) !important; }
+/* Fix inline style overrides for settings/logout buttons */
+.ni[onclick*="settings"], .ni[onclick*="doLogout"] { color: var(--on-sub) !important; }
+/* Mobile nav: dark → light */
+.mob-nav { background: var(--surface) !important; border-top: 1px solid var(--border) !important; }
+.mnav-btn { color: var(--on-sub) !important; }
+.mnav-btn.active { color: var(--primary) !important; }
+.mnav-lbl { color: inherit !important; }
+.mnav-more-menu { background: var(--surface) !important; border: 1px solid var(--border) !important; }
+.mnav-more-item { color: var(--on-bg) !important; }
+.mnav-more-item:hover { background: var(--primary-tint) !important; color: var(--primary) !important; }
+/* Topbar */
+.topbar { background: var(--surface) !important; border-bottom: 1px solid var(--border) !important; box-shadow: 0 1px 2px rgba(60,64,67,.1); }
+/* Body bg */
+body { background: var(--bg) !important; }
+/* Primary button color */
+.btn-r { background: var(--primary) !important; }
+.btn-r:hover { background: var(--primary-dk) !important; }
+.ctab.active { background: var(--primary) !important; border-color: var(--primary) !important; }
+/* Mobile End button label */
+#mnav-endsession .mnav-lbl { color: var(--primary) !important; }
+/* Google multicolor logo */
+.logo-e  { color: #4285F4; } .logo-d { color: #EA4335; }
+.logo-u  { color: #FBBC05; } .logo-p { color: #34A853; }
 </style>
 </head>
 <body>
@@ -368,7 +405,7 @@ textarea.fc{resize:vertical;min-height:60px;}
   <div class="sb-top">
     <div class="brand">
       <div class="bi">I</div>
-      <div class="bn"><span style="color:#4285F4">E</span><span style="color:#EA4335">d</span><span style="color:#FBBC05">u</span><span style="color:#34A853">Portal</span></div>
+      <div class="bn"><span class="logo-e">E</span><span class="logo-d">d</span><span class="logo-u">u</span><em>Portal</em></div>
     </div>
     <div class="tbadge">⚡ TEACHER</div>
   </div>
@@ -380,15 +417,14 @@ textarea.fc{resize:vertical;min-height:60px;}
     <div class="nlbl">Tracking</div>
     <button class="ni" onclick="showSec('tuition')"><span class="ni-ico">💳</span>Tuition & Attendance</button>
     <button class="ni" onclick="showSec('homework')"><span class="ni-ico">📝</span>Homework Tracker</button>
-    <button class="ni" onclick="showSec('hwbook')"><span class="ni-ico">📖</span>Homework Book</button>
     <button class="ni" onclick="showSec('participation')"><span class="ni-ico">🙋</span>Participation</button>
     <div class="nlbl">Reports</div>
     <button class="ni" onclick="showSec('diligence')"><span class="ni-ico">🏆</span>Diligent Report</button>
     <button class="ni" onclick="showSec('archive')"><span class="ni-ico">🗄</span>Archive</button>
   </nav>
   <div class="sb-bot">
-    <button class="ni" onclick="showSec('settings')" style="color:var(--on-sub)"><span class="ni-ico">⚙️</span>Settings</button>
-    <button class="ni" onclick="doLogout()" style="color:var(--on-sub)"><span class="ni-ico">🚪</span>Sign Out</button>
+    <button class="ni" onclick="showSec('settings')" style="color:rgba(255,255,255,.35)"><span class="ni-ico">⚙️</span>Settings</button>
+    <button class="ni" onclick="doLogout()" style="color:rgba(255,255,255,.35)"><span class="ni-ico">🚪</span>Sign Out</button>
   </div>
 </aside>
 
@@ -488,14 +524,6 @@ textarea.fc{resize:vertical;min-height:60px;}
       </div>
     </div>
 
-    <!-- ⑤ HOMEWORK BOOK -->
-    <div id="sec-hwbook" class="sec">
-      <div class="ctabs" id="hwBookTabs"><button class="ctab active">Select a class</button></div>
-      <div id="hwBookContent">
-        <p style="padding:40px;text-align:center;color:var(--g400)">Select a class above to view assigned homework.</p>
-      </div>
-    </div>
-
     <!-- ⑤ PARTICIPATION REPORT -->
     <div id="sec-participation" class="sec">
       <div class="ctabs" id="partTabs"><button class="ctab active" onclick="filterPart('all',this)">All Classes</button></div>
@@ -530,34 +558,8 @@ textarea.fc{resize:vertical;min-height:60px;}
     <!-- ⑧ SETTINGS -->
     <div id="sec-settings" class="sec">
       <div class="sec-hd"><div class="sec-title">Settings</div></div>
-      <!-- Create New Class -->
       <div class="card" style="max-width:560px">
-        <div class="ch"><div class="ct">➕ Create New Class</div></div>
-        <div class="cb">
-          <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Creates a new class sheet in the Spreadsheet. The class will appear in all tabs immediately.</p>
-          <div class="fg">
-            <label class="fl">Class Name</label>
-            <input type="text" class="fc" id="newClassName" placeholder="e.g. IELTS 43" style="max-width:240px"/>
-          </div>
-          <div id="createClassResult" style="display:none;margin-top:8px"></div>
-          <button class="btn btn-r" onclick="doCreateClass()">➕ Create Class</button>
-        </div>
-      </div>
-      <!-- Archive Class -->
-      <div class="card" style="max-width:560px">
-        <div class="ch"><div class="ct">🗄 Archive a Class</div></div>
-        <div class="cb">
-          <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Moves the class tab to <code style="background:var(--g100);padding:1px 6px;border-radius:4px;font-size:12px">ARCHIVED_[name]</code> and moves all students to Archived Users. Data is preserved and can be restored from the Archive tab.</p>
-          <div class="fg">
-            <label class="fl">Select Class to Archive</label>
-            <select class="fc" id="archiveClassSelect" style="max-width:240px">
-              <option value="">— Select class —</option>
-            </select>
-          </div>
-          <div id="archiveClassResult" style="display:none;margin-top:8px"></div>
-          <button class="btn btn-r" onclick="doArchiveClass()" style="background:#ea4335">🗄 Archive Class</button>
-        </div>
-      </div>
+        <div class="ch"><div class="ct">🪪 Student ID Assignment</div></div>
         <div class="cb">
           <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Auto-generate IDs for all students without one. Format: <code style="background:var(--g100);padding:1px 6px;border-radius:4px;font-size:12px">IE42-001</code></p>
           <div id="assignIdResult"></div>
@@ -637,7 +639,7 @@ textarea.fc{resize:vertical;min-height:60px;}
 <!-- END SESSION (multi-step) -->
 <div class="mo" id="moFinish">
   <div class="md" style="max-width:560px">
-    <div class="md-h">✅ End Session — <select id="moFinishClassSel" style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--primary);border:none;background:transparent;cursor:pointer;outline:none;padding:0"></select></div>
+    <div class="md-h">✅ End Session — <select id="moFinishClassSel" style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--red);border:none;background:transparent;cursor:pointer;outline:none;padding:0"></select></div>
     <div class="md-sub">Complete attendance, then assign homework for this session.</div>
 
     <div class="step-tabs">
@@ -804,7 +806,7 @@ textarea.fc{resize:vertical;min-height:60px;}
     <!-- Spin area -->
     <div style="text-align:center;padding:12px 0">
       <div id="spinDisplay" style="
-        font-family:var(--serif);font-size:28px;font-weight:900;color:var(--primary);
+        font-family:var(--serif);font-size:28px;font-weight:900;color:var(--red);
         min-height:44px;letter-spacing:.5px;transition:all .1s;
         background:var(--g50);border-radius:12px;padding:10px 20px;
         border:2px solid var(--g200);margin-bottom:12px">
@@ -835,12 +837,12 @@ textarea.fc{resize:vertical;min-height:60px;}
     <button class="mnav-btn" id="mnav-tuition" onclick="mnavGo('tuition',this)">
       <span class="mnav-ico">💳</span><span class="mnav-lbl">Attendance</span>
     </button>
-    <button class="mnav-btn" id="mnav-endsession" onclick="openFinishFor(null)" style="color:var(--primary)">
-      <span class="mnav-ico" style="background:var(--primary);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;margin-top:-14px;box-shadow:0 4px 12px rgba(66,133,244,.5)">✅</span>
-      <span class="mnav-lbl" style="color:var(--primary)">End</span>
+    <button class="mnav-btn" id="mnav-endsession" onclick="openFinishFor(null)" style="color:var(--red)">
+      <span class="mnav-ico" style="background:var(--red);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;margin-top:-14px;box-shadow:0 4px 12px rgba(224,26,34,.5)">✅</span>
+      <span class="mnav-lbl">End</span>
     </button>
-    <button class="mnav-btn" id="mnav-hwbook" onclick="mnavGo('hwbook',this)">
-      <span class="mnav-ico">📖</span><span class="mnav-lbl">HW Book</span>
+    <button class="mnav-btn" id="mnav-homework" onclick="mnavGo('homework',this)">
+      <span class="mnav-ico">📝</span><span class="mnav-lbl">Homework</span>
     </button>
     <button class="mnav-btn" id="mnav-more" onclick="toggleMnavMore(this)">
       <span class="mnav-ico">☰</span><span class="mnav-lbl">More</span>
@@ -850,7 +852,6 @@ textarea.fc{resize:vertical;min-height:60px;}
 
 <!-- More menu overlay -->
 <div class="mnav-more-menu" id="mnavMoreMenu">
-  <button class="mnav-more-item" onclick="mnavGo('homework',null);toggleMnavMore()"><span>📝</span> Homework Tracker</button>
   <button class="mnav-more-item" onclick="mnavGo('weekly',null);toggleMnavMore()"><span>🗓</span> Weekly Schedule</button>
   <button class="mnav-more-item" onclick="mnavGo('participation',null);toggleMnavMore()"><span>🙋</span> Participation</button>
   <button class="mnav-more-item" onclick="mnavGo('diligence',null);toggleMnavMore()"><span>🏆</span> Diligent Report</button>
@@ -903,7 +904,6 @@ async function api(action, data) {
 var TITLES = {
   overview:'Students Overview', weekly:'Weekly Schedule',
   tuition:'Tuition & Attendance', homework:'Homework Tracker',
-  hwbook:'Homework Book',
   participation:'Participation Report', diligence:'Diligent Report',
   archive:'Archive', settings:'Settings'
 };
@@ -920,20 +920,8 @@ function showSec(id) {
   // Lazy load
   if (id==='weekly') loadWeekly();
   if (id==='archive') loadArchive();
-  if (id==='settings') {
-    // Populate archive class dropdown
-    var sel = document.getElementById('archiveClassSelect');
-    if (sel && classData.length) {
-      sel.innerHTML = '<option value="">— Select class —</option>';
-      classData.forEach(function(c){
-        var o = document.createElement('option');
-        o.value = c.classId; o.textContent = c.classId;
-        sel.appendChild(o);
-      });
-    }
-  }
+  if (id==='participation' && classData.length) buildPartTabs();
   if (id==='homework' && classData.length) buildHWTrackerTabs();
-  if (id==='hwbook' && classData.length) buildHWBookTabs();
   if (id==='settings') {
     // Populate class selector in Homework Management
     var sel=document.getElementById('hwDelClass');
@@ -968,7 +956,10 @@ async function doDeleteHWFromSettings(){
       res.style.padding='8px 12px'; res.style.borderRadius='7px';
       res.textContent='✓ Đã xóa '+r.deleted+' homework. ('+label+')';
       delete hwTrackerCache[classId];
-      if(hwBookCache[classId]) delete hwBookCache[classId];
+    } else {
+      res.style.background='#fee2e2'; res.style.color='#991b1b';
+      res.style.padding='8px 12px'; res.style.borderRadius='7px';
+      res.textContent='Lỗi: '+r.message;
     }
   }catch(e){
     res.style.display='block';
@@ -1122,7 +1113,7 @@ function renderOverview(filterClass) {
       '<td><strong>'+s.name+'</strong></td>'+
       '<td><span class="badge '+lvl+'" style="padding:3px 8px;border-radius:5px;font-size:11px">'+s.classId+'</span></td>'+
       '<td>'+s.monthsUsed+'<span style="color:var(--g400);font-size:11px"> months</span></td>'+
-      '<td><span style="font-weight:700;color:var(--primary)">Month '+curMonth+'</span> <span style="font-size:11px;color:var(--g400)">('+s.sessInCycle+'/8)</span></td>'+
+      '<td><span style="font-weight:700;color:var(--red)">Month '+curMonth+'</span> <span style="font-size:11px;color:var(--g400)">('+s.sessInCycle+'/8)</span></td>'+
       '<td>'+paidLabel+'</td>'+
       '<td><span class="badge bp">'+s.present+'</span></td>'+
       '<td><span class="badge bl">'+s.late+'</span></td>'+
@@ -1203,7 +1194,7 @@ async function loadWeekly() {
   var thead='<tr><th style="background:var(--g900);color:white;min-width:110px;text-align:left;padding:10px 13px">Class</th>';
   dates.forEach(function(d,i){
     var isT=fmtD(d)===today;
-    thead+='<th style="min-width:130px;text-align:center;background:'+(isT?'var(--primary)':'var(--g900)')+';color:white;padding:10px 8px">'+
+    thead+='<th style="min-width:130px;text-align:center;background:'+(isT?'var(--red)':'var(--g900)')+';color:white;padding:10px 8px">'+
       DAYS[i]+'<br><span style="font-weight:400;font-size:10px;opacity:.7">'+d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</span></th>';
   });
   thead+='</tr>';
@@ -1227,7 +1218,7 @@ async function loadWeekly() {
           '</div>';
         }).join('');
       }
-      cells+='<td style="padding:7px;vertical-align:top;'+(isT?'background:rgba(66,133,244,.04)':'')+'">'+
+      cells+='<td style="padding:7px;vertical-align:top;'+(isT?'background:rgba(224,26,34,.04)':'')+'">'+
         (html||'<span style="color:var(--g200);font-size:11px">—</span>')+'</td>';
     });
     tbody+='<tr><td style="padding:9px 13px;font-weight:700;vertical-align:top;white-space:nowrap;background:var(--g100)">'+
@@ -1275,7 +1266,7 @@ async function loadTuition(classId, forceRefresh){
           '<td style="padding:9px 13px"><strong>'+s.name+'</strong><br><span style="font-size:10px;color:var(--g400)">'+(s.studentId||'')+'</span></td>'+
           '<td style="padding:9px 13px"><span class="badge '+ getLevelClass(s.classId)+'">'+s.classId+'</span></td>'+
           '<td style="padding:9px 13px;text-align:center">'+s.total+'</td>'+
-          '<td style="padding:9px 13px;text-align:center;font-weight:700;color:var(--primary)">M'+s.monthsUsed+'</td>'+
+          '<td style="padding:9px 13px;text-align:center;font-weight:700;color:var(--red)">M'+s.monthsUsed+'</td>'+
           '<td style="padding:9px 13px;min-width:140px">'+
             '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>'+sin+'/8 sessions</span><span>'+pct+'%</span></div>'+
             '<div class="pbar"><div class="pbar-fill" style="width:'+pct+'%"></div></div>'+
@@ -1294,7 +1285,7 @@ async function loadTuition(classId, forceRefresh){
   try {
     // Single API call — returns students+attendance+tuition+schedule together
     var r = await api('getAttendanceMatrix', {classId:classId});
-    if(!r.success){el.innerHTML='<p style="color:var(--primary);padding:20px">Error: '+r.message+'</p>';return;}
+    if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
 
     allSchedules[classId] = r.sessions||[];
 
@@ -1305,7 +1296,7 @@ async function loadTuition(classId, forceRefresh){
     tuitionCache[classId] = students;
     tuitionCache[classId+'_totalMonths'] = r.totalScheduledMonths||1;
     renderTuitionGrid(classId);
-  } catch(e){el.innerHTML='<p style="color:var(--primary);padding:20px">Connection error</p>';}
+  } catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>';}
 }
 
 function renderTuitionGrid(classId){
@@ -1521,7 +1512,7 @@ function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
   topRow.style='display:flex;align-items:center;gap:5px;flex-wrap:wrap;';
 
   var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=paid;
-  cb.style='width:14px;height:14px;cursor:pointer;accent-color:var(--primary);flex-shrink:0';
+  cb.style='width:14px;height:14px;cursor:pointer;accent-color:var(--red);flex-shrink:0';
   cb.onchange=(function(cid,em,mo){return function(){togglePaidCell(cid,em,mo,this);};})(classId,email,moNo);
 
   var lbl=document.createElement('span');
@@ -1540,7 +1531,7 @@ function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
 
   var ni=document.createElement('input'); ni.type='text'; ni.value=note||''; ni.placeholder='Note…';
   ni.style='font-size:10px;border:1px solid var(--g200);border-radius:4px;padding:2px 6px;width:100%;color:var(--g600);outline:none;';
-  ni.onfocus=function(){this.style.borderColor='var(--primary)';};
+  ni.onfocus=function(){this.style.borderColor='var(--red)';};
   ni.onblur=(function(cid,em,mo,nEl){return function(){
     api('markTuitionPaid',{classId:cid,studentEmail:em,monthNo:mo,paid:true,paidDate:paidDate||new Date().toISOString().split('T')[0],note:nEl.value})
       .catch(function(){});
@@ -1605,7 +1596,7 @@ function updateHWSessionInfo(){
     var dl2=autoDeadline(classId,date,'L');
     info.innerHTML='<div style="display:flex;gap:16px;flex-wrap:wrap">'+
       '<div><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase">Buổi học</div>'+
-      '<div style="font-size:14px;font-weight:700;color:var(--primary);margin-top:2px">Reading + Listening</div></div>'+
+      '<div style="font-size:14px;font-weight:700;color:var(--red);margin-top:2px">Reading + Listening</div></div>'+
       '<div><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase">Ngày</div>'+
       '<div style="font-size:14px;font-weight:700;margin-top:2px">'+dateDisp+'</div></div></div>';
     hwArea.innerHTML=
@@ -1627,7 +1618,7 @@ function updateHWSessionInfo(){
     var dl=autoDeadline(classId,date,skillRaw);
     info.innerHTML='<div style="display:flex;gap:16px;flex-wrap:wrap">'+
       '<div><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.4px">Skill</div>'+
-      '<div style="font-size:14px;font-weight:700;color:var(--primary);margin-top:2px">'+displaySkill+'</div></div>'+
+      '<div style="font-size:14px;font-weight:700;color:var(--red);margin-top:2px">'+displaySkill+'</div></div>'+
       '<div><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.4px">Ngày dạy</div>'+
       '<div style="font-size:14px;font-weight:700;margin-top:2px">'+dateDisp+'</div></div>'+
       '<div><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.4px">Deadline (auto)</div>'+
@@ -1725,7 +1716,7 @@ function refreshModalStudents(){
         '<span style="font-size:11px;color:var(--g400)">Lần PB:</span>'+
         '<input type="number" min="0" value="'+existingScore+'" id="part-'+s.email.replace(/[@.]/g,'_')+'" '+
           'style="width:52px;padding:4px 7px;border:1.5px solid var(--g200);border-radius:6px;font-size:13px;font-weight:600;text-align:center;outline:none;" '+
-          'onfocus="this.style.borderColor=\'var(--primary)\'" onblur="this.style.borderColor=\'var(--g200)\'"/>'+
+          'onfocus="this.style.borderColor=\'var(--red)\'" onblur="this.style.borderColor=\'var(--g200)\'"/>'+
       '</div></div>';
   }).join('');
 }
@@ -1896,7 +1887,6 @@ async function doAssignHW(){
     if(r.success){
       toast('Homework assigned ✓','ok'); closeMo('moHW');
       if(hwTrackerCache[classId])delete hwTrackerCache[classId];
-      if(hwBookCache[classId]) delete hwBookCache[classId];
       if(document.getElementById('sec-homework').classList.contains('active')) buildHWTrackerTabs();
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
@@ -1953,7 +1943,6 @@ async function doAssignExtraHW(){
       toast('Extra HW assigned ✓','ok');
       closeMo('moExtraHW');
       if(hwTrackerCache[classId]) delete hwTrackerCache[classId];
-      if(hwBookCache[classId]) delete hwBookCache[classId];
       if(document.getElementById('sec-homework').classList.contains('active')) buildHWTrackerTabs();
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
@@ -1993,10 +1982,10 @@ async function loadHWTracker(classId){
   el.innerHTML='<p style="padding:30px;text-align:center;color:var(--g400)">Loading…</p>';
   try{
     var r=await api('getHomeworkTracker',{classId:classId});
-    if(!r.success){el.innerHTML='<p style="color:var(--primary);padding:20px">Error: '+r.message+'</p>';return;}
+    if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
     hwTrackerCache[classId]=r;
     renderHWTracker(classId);
-  }catch(e){el.innerHTML='<p style="color:var(--primary);padding:20px">Connection error</p>';}
+  }catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>';}
 }
 
 function renderHWTracker(classId){
@@ -2197,7 +2186,6 @@ async function deleteHWCol(classId, sessionDate, type){
     if(r.success){
       toast('Đã xóa homework '+tname+' ('+dl+') ✓','ok');
       delete hwTrackerCache[classId];
-      if(hwBookCache[classId]) delete hwBookCache[classId];
       loadHWTracker(classId);
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
@@ -2238,143 +2226,6 @@ function buildHWCell(cell,classId,email,hw,status,note){
 // ═══════════════════════════════════════════════════════
 // ⑤ PARTICIPATION REPORT
 // ═══════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════
-// HOMEWORK BOOK
-// ═══════════════════════════════════════════════════════
-var hwBookCache = {};
-
-function buildHWBookTabs() {
-  var el = document.getElementById('hwBookTabs');
-  el.innerHTML = '';
-  if (!classData.length) return;
-  classData.forEach(function(cls, i) {
-    var b = document.createElement('button');
-    b.className = 'ctab' + (i === 0 ? ' active' : '');
-    b.textContent = cls.classId;
-    b.onclick = (function(cid, btn) { return function() { loadHWBook(cid, btn); }; })(cls.classId, b);
-    el.appendChild(b);
-  });
-  loadHWBook(classData[0].classId, el.firstChild);
-}
-
-async function loadHWBook(classId, btn) {
-  document.querySelectorAll('#hwBookTabs .ctab').forEach(function(b) { b.classList.remove('active'); });
-  if (btn) btn.classList.add('active');
-  var el = document.getElementById('hwBookContent');
-  if (hwBookCache[classId]) { renderHWBook(classId); return; }
-  el.innerHTML = '<p style="padding:40px;text-align:center;color:var(--g400)">Loading…</p>';
-  try {
-    var r = await api('getHomeworkTracker', { classId: classId });
-    if (!r.success) { el.innerHTML = '<p style="color:var(--primary);padding:20px">Error: ' + r.message + '</p>'; return; }
-    hwBookCache[classId] = r;
-    renderHWBook(classId);
-  } catch(e) { el.innerHTML = '<p style="color:var(--primary);padding:20px">Connection error</p>'; }
-}
-
-function renderHWBook(classId) {
-  var data = hwBookCache[classId]; if (!data) return;
-  var el = document.getElementById('hwBookContent');
-  var hwList = data.homework || [];
-  var today = new Date().toISOString().split('T')[0];
-
-  if (!hwList.length) {
-    el.innerHTML = '<div class="card"><div style="padding:40px;text-align:center;color:var(--g400)"><div style="font-size:32px;margin-bottom:8px">📖</div><div style="font-weight:600">No homework assigned yet</div></div></div>';
-    return;
-  }
-
-  var seen = {}, pending = [], past = [];
-  hwList.forEach(function(hw) {
-    if (seen[hw.hwId]) return;
-    seen[hw.hwId] = true;
-    if (hw.deadline && hw.deadline < today) past.push(hw);
-    else pending.push(hw);
-  });
-  pending.sort(function(a,b){ return (a.deadline||'') > (b.deadline||'') ? 1 : -1; });
-  past.sort(function(a,b){ return (a.deadline||'') < (b.deadline||'') ? 1 : -1; });
-
-  var typeNames = { W:'Writing', L:'Listening', S:'Speaking', V:'Vocab', R:'Reading', G:'Grammar' };
-  var skBg = { W:'#ffedd5', L:'#dbeafe', S:'#ede9fe', V:'#dcfce7', R:'#fce7f3', G:'#f3f4f6' };
-  var skCl = { W:'#7c2d12', L:'#1e40af', S:'#4c1d95', V:'#166534', R:'#9d174d', G:'#374151' };
-  var skBorder = { W:'#f97316', L:'#3b82f6', S:'#8b5cf6', V:'#22c55e', R:'#ec4899', G:'#6b7280' };
-  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-  function fmtDl(dl) {
-    if (!dl || dl.length < 10) return dl || '—';
-    var d = new Date(dl + 'T00:00:00');
-    var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    return days[d.getDay()] + ', ' + parseInt(dl.slice(8)) + '-' + months[d.getMonth()] + '-' + dl.slice(0,4);
-  }
-
-  function hwCard(hw, isPast) {
-    var tname = typeNames[hw.type] || hw.type || '—';
-    var border = skBorder[hw.type] || '#6b7280';
-    var bg = skBg[hw.type] || '#f3f4f6';
-    var cl = skCl[hw.type] || '#374151';
-    var contentHtml = (hw.content||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-    var sessDisp = hw.sessionDate ? fmtBrit(hw.sessionDate) : (hw.isExtra ? '⭐ Extra' : '—');
-    var dlDisp = fmtDl(hw.deadline || '');
-
-    // Countdown for pending
-    var countdownHtml = '';
-    if (!isPast && hw.deadline) {
-      var diff = Math.ceil((new Date(hw.deadline+'T00:00:00') - new Date(today+'T00:00:00')) / 86400000);
-      var col = diff <= 1 ? '#dc2626' : diff <= 3 ? '#d97706' : '#34A853';
-      var txt = diff === 0 ? 'Due today' : diff === 1 ? '1 day left' : diff + ' days left';
-      countdownHtml = '<span style="font-size:12px;font-weight:700;color:'+col+'">'+txt+'</span>';
-    }
-
-    // Submission stats
-    var students = data.students || [];
-    var total = students.length, done = 0;
-    students.forEach(function(s){
-      var sub = s.submissions[hw.hwId];
-      if (sub && sub.status === 'Done') done++;
-    });
-    var pct = total ? Math.round((done/total)*100) : 0;
-    var rateBg = pct>=80?'#e6f4ea':pct>=40?'#fef9c3':'#fce8e6';
-    var rateCol = pct>=80?'#137333':pct>=40?'#854d0e':'#c5221f';
-
-    return '<div style="background:white;border-radius:10px;padding:16px 18px;border-left:4px solid '+border+';box-shadow:0 1px 3px rgba(60,64,67,.15)'+(isPast?';opacity:.85':'')+'">'+
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;">'+
-        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
-          '<span style="padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;background:'+bg+';color:'+cl+'">'+tname+'</span>'+
-          (hw.isExtra?'<span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#fef9c3;color:#854d0e">⭐ Extra</span>':'')+
-          '<span style="font-size:11px;color:var(--g400)">📅 '+sessDisp+'</span>'+
-        '</div>'+
-        '<div style="display:flex;align-items:center;gap:8px;">'+
-          countdownHtml+
-          '<span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:'+rateBg+';color:'+rateCol+'">'+done+'/'+total+' done</span>'+
-        '</div>'+
-      '</div>'+
-      '<div style="font-size:13px;color:var(--g900);line-height:1.6;margin-bottom:10px;white-space:pre-wrap;word-break:break-word">'+contentHtml+'</div>'+
-      '<div style="font-size:11px;color:var(--g400)">📅 Deadline: <strong style="color:'+(isPast?'#9aa0a6':'var(--g900)')+'">'+dlDisp+'</strong></div>'+
-      '<div style="margin-top:10px;background:var(--g100);border-radius:4px;height:5px;overflow:hidden">'+
-        '<div style="height:100%;background:'+border+';width:'+pct+'%;border-radius:4px;transition:width .5s"></div>'+
-      '</div>'+
-    '</div>';
-  }
-
-  function grid(arr, isPast) {
-    if (!arr.length) return '<p style="color:var(--g400);font-size:13px;padding:12px 0">'+(isPast?'No past homework.':'No upcoming homework.')+'</p>';
-    return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">'+
-      arr.map(function(h){ return hwCard(h, isPast); }).join('')+'</div>';
-  }
-
-  el.innerHTML = '<div style="padding:2px 0">'+
-    '<div style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--g900)">Pending Homework ('+pending.length+')</div>'+
-    grid(pending, false)+
-    (past.length ? (
-      '<div style="display:flex;align-items:center;gap:10px;margin:24px 0 16px">'+
-        '<div style="flex:1;height:1px;background:var(--g200)"></div>'+
-        '<div style="background:var(--g900);color:white;font-size:13px;font-weight:700;padding:5px 14px;border-radius:20px">Past Homework ('+past.length+')</div>'+
-        '<div style="flex:1;height:1px;background:var(--g200)"></div>'+
-      '</div>'+
-      grid(past, true)
-    ) : '') +
-  '</div>';
-}
-
-// Cache invalidation — same triggers as hwTrackerCache
 function buildPartTabs(){
   var el=document.getElementById('partTabs');
   el.innerHTML='<button class="ctab active" onclick="filterPart(\'all\',this)">All Classes</button>';
@@ -2411,10 +2262,10 @@ async function loadPart(classId){
       renderPartFromCache(classId);
     } else {
       var r=await api('getRewards',{classId:classId});
-      if(!r.success){el.innerHTML='<p style="color:var(--primary);padding:20px">Error: '+r.message+'</p>';return;}
+      if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
       renderPartFallback(classId,r.months||[]);
     }
-  }catch(e){el.innerHTML='<p style="color:var(--primary);padding:20px">Connection error</p>';}
+  }catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>';}
 }
 
 function renderPartFromCache(classId){
@@ -2489,8 +2340,8 @@ function renderPart(classId,months,hasRealScores){
         var d=moDates[si]||'';
         var score=d&&s.sessScores?s.sessScores[d]:null;
         var hasScore=score!==null&&score!==undefined&&score>0;
-        var cellColor=hasScore?'var(--primary)':'var(--g300)';
-        var cellBg=hasScore?'#e8f0fe':'var(--g100)';
+        var cellColor=hasScore?'var(--red)':'var(--g300)';
+        var cellBg=hasScore?'#fff1f2':'var(--g100)';
         sessCells+='<td style="padding:4px 3px;text-align:center;border-bottom:1px solid var(--g100)">'+
           '<div style="width:36px;height:28px;border-radius:6px;background:'+cellBg+';margin:auto;'+
           'display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;'+
@@ -2502,7 +2353,7 @@ function renderPart(classId,months,hasRealScores){
           '<div style="font-size:13px;font-weight:600">'+s.name+'</div>'+
         '</td>'+
         sessCells+
-        '<td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--g100);font-weight:800;font-family:var(--serif);font-size:18px;color:'+(s.total>0?'var(--primary)':'var(--g300)')+'">'+
+        '<td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--g100);font-weight:800;font-family:var(--serif);font-size:18px;color:'+(s.total>0?'var(--red)':'var(--g300)')+'">'+
           (s.total>0?s.total:'—')+'</td>'+
         '<td style="padding:8px 10px;border-bottom:1px solid var(--g100)">'+
           (isTop?'<span class="badge bstar">⭐ Top</span>':'')+'</td>'+
@@ -2577,11 +2428,11 @@ async function loadDiligence(classId){
   try{
     var r2=await api('getRewards',{classId:classId});
     if(myReqId!==_diligenceReqId) return;
-    if(!r2.success){el.innerHTML='<p style="color:var(--primary);padding:20px">Error: '+r2.message+'</p>';return;}
+    if(!r2.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r2.message+'</p>';return;}
     if(!r2.months||!r2.months.length){el.innerHTML='<p style="padding:40px;text-align:center;color:var(--g400)">No data yet — complete at least 1 session first.</p>';return;}
     _diligenceCache[classId]=r2.months;
     renderDiligence(classId, r2.months);
-  }catch(e){el.innerHTML='<p style="color:var(--primary);padding:20px">Error: '+e.message+'<br><small>Open console for details.</small></p>';}
+  }catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+e.message+'<br><small>Open console for details.</small></p>';}
 }
 
 function renderDiligence(classId, months){
@@ -2724,9 +2575,9 @@ function doSpin(){
       clearInterval(interval);
       // Show winner
       display.textContent='🎉 '+winner+'!';
-      display.style.color='var(--primary)';
-      display.style.background='#e8f0fe';
-      display.style.borderColor='var(--primary)';
+      display.style.color='var(--red)';
+      display.style.background='#fff1f2';
+      display.style.borderColor='var(--red)';
 
       // Highlight winner tile, dim others
       spinCandidates.forEach(function(name,i){
@@ -2778,7 +2629,7 @@ async function loadArchive(){
   if(archiveMode==='students'){
     try{
       var r=await api('getArchivedStudents');
-      if(!r.success){el.innerHTML='<p style="color:var(--primary);padding:20px">Error: '+r.message+'</p>';return;}
+      if(!r.success){el.innerHTML='<p style="color:var(--red);padding:20px">Error: '+r.message+'</p>';return;}
       var students=r.students||[];
       if(!students.length){
         el.innerHTML='<div class="card"><div class="cb" style="text-align:center;color:var(--g400);padding:40px">'+
@@ -2802,39 +2653,22 @@ async function loadArchive(){
                 '<button class="btn btn-o btn-sm" onclick="restoreStudent(\''+s.email+'\',\''+s.name+'\')">Restore</button>'+
               '</td></tr>';
           }).join('')+'</tbody></table></div></div>';
-    }catch(e){el.innerHTML='<p style="color:var(--primary);padding:20px">Connection error</p>';}
+    }catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>';}
   } else {
-    // Classes — fetch and display archived class list
+    // Classes — show archived class tabs
     try{
-      var r2 = await api('getArchivedClasses');
-      var classes = r2.classes || [];
-      if(!classes.length){
-        el.innerHTML='<div class="card"><div class="cb" style="padding:40px;text-align:center;color:var(--g400)">'+
-          '<div style="font-size:32px;margin-bottom:8px">🗄</div>'+
-          '<div style="font-weight:600">No archived classes</div>'+
-          '<div style="font-size:12px;margin-top:4px">Archive a class from Settings → Archive a Class</div>'+
-        '</div></div>';
-        return;
-      }
-      var rows = classes.map(function(c){
-        return '<tr>'+
-          '<td style="padding:10px 14px;font-weight:600">'+c.classId+'</td>'+
-          '<td style="padding:10px 14px;color:var(--g400);font-size:12px">'+c.archivedName+'</td>'+
-          '<td style="padding:10px 14px">'+c.studentCount+' students</td>'+
-          '<td style="padding:10px 14px">'+
-            '<button class="btn btn-o btn-sm" onclick="restoreClassById(\''+c.classId+'\')">Restore</button>'+
-          '</td>'+
-        '</tr>';
-      }).join('');
-      el.innerHTML='<div class="card"><div class="ch"><div class="ct">Archived Classes ('+classes.length+')</div></div>'+
-        '<table style="width:100%;border-collapse:collapse;font-size:13px">'+
-        '<thead><tr style="background:var(--g100)">'+
-          '<th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--g600)">Class</th>'+
-          '<th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--g600)">Sheet Tab</th>'+
-          '<th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--g600)">Students</th>'+
-          '<th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--g600)">Action</th>'+
-        '</tr></thead><tbody>'+rows+'</tbody></table></div>';
-    }catch(e){el.innerHTML='<p style="color:var(--primary);padding:20px">Connection error</p>';}
+      var r2=await api('getClassList');
+      // We need to list tabs starting with ARCHIVED_ — GAS getClassList doesn't return archived
+      // Show message + restore option
+      el.innerHTML='<div class="card"><div class="ch"><div class="ct">Archived Classes</div></div>'+
+        '<div class="cb"><p style="color:var(--g600);font-size:13px;margin-bottom:12px">'+
+        'Archived classes are stored in Google Sheets as ARCHIVED_[classId] tabs. '+
+        'To restore a class, enter the class ID below.</p>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+        '<input type="text" class="fc" id="arcClassInput" placeholder="e.g. IELTS 41" style="max-width:220px"/>'+
+        '<button class="btn btn-o" onclick="restoreClass()">Restore Class</button>'+
+        '</div></div></div>';
+    }catch(e){el.innerHTML='<p style="color:var(--red);padding:20px">Connection error</p>';}
   }
 }
 
@@ -2847,74 +2681,19 @@ async function restoreStudent(email,name){
   }catch(e){toast('Connection error','err');}
 }
 
-async function restoreClassById(classId){
-  if(!confirm('Restore class "'+classId+'"? Students will be moved back to active.'))return;
+async function restoreClass(){
+  var classId=document.getElementById('arcClassInput').value.trim();
+  if(!classId){toast('Enter class ID','err');return;}
   try{
     var r=await api('archiveClass',{classId:classId,archive:false});
-    if(r.success){toast('Class '+classId+' restored ✓','ok');loadArchive();classData=[];await init();}
+    if(r.success){toast('Class '+classId+' restored ✓','ok');classData=[];await init();}
     else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
-}
-
-async function restoreClass(){
-  var classId=document.getElementById('arcClassInput')?.value.trim();
-  if(!classId){toast('Enter class ID','err');return;}
-  await restoreClassById(classId);
 }
 
 // ═══════════════════════════════════════════════════════
 // SETTINGS
 // ═══════════════════════════════════════════════════════
-async function doArchiveClass(){
-  var classId = document.getElementById('archiveClassSelect').value;
-  var resultEl = document.getElementById('archiveClassResult');
-  if(!classId){ toast('Please select a class','err'); return; }
-  if(!confirm('Archive class "'+classId+'"?\n\nThis will:\n• Rename the sheet tab to ARCHIVED_'+classId+'\n• Move all students to Archived Users\n\nData is preserved and can be restored from the Archive tab.')) return;
-  var btn = event.target; btn.disabled=true; btn.textContent='Archiving…';
-  resultEl.style.display='none';
-  try{
-    var r = await api('archiveClass',{classId:classId,archive:true});
-    if(r.success){
-      resultEl.style.cssText='display:block;padding:8px 12px;background:#e6f4ea;border-radius:6px;font-size:13px;color:#1e8e3e;font-weight:600';
-      resultEl.textContent='✓ Class "'+classId+'" archived successfully.';
-      classData=[]; await init();
-      // Refresh dropdown
-      var sel=document.getElementById('archiveClassSelect');
-      sel.innerHTML='<option value="">— Select class —</option>';
-      classData.forEach(function(c){
-        var o=document.createElement('option'); o.value=c.classId; o.textContent=c.classId;
-        sel.appendChild(o);
-      });
-      toast('Class "'+classId+'" archived ✓','ok');
-    } else {
-      resultEl.style.cssText='display:block;padding:8px 12px;background:#fce8e6;border-radius:6px;font-size:13px;color:#c5221f;font-weight:600';
-      resultEl.textContent='Error: '+(r.message||'Failed to archive class');
-    }
-  }catch(e){ toast('Connection error','err'); }
-  finally{ btn.disabled=false; btn.textContent='🗄 Archive Class'; }
-}
-
-async function doCreateClass(){
-  const name = (document.getElementById('newClassName').value||'').trim();
-  const resultEl = document.getElementById('createClassResult');
-  if(!name){ toast('Please enter a class name','err'); return; }
-  resultEl.style.display='none';
-  const btn = event.target; btn.disabled=true; btn.textContent='Creating…';
-  try{
-    const r = await api('createClass',{className:name});
-    if(r.success){
-      document.getElementById('newClassName').value='';
-      resultEl.style.cssText='display:block;padding:8px 12px;background:#e6f4ea;border-radius:6px;font-size:13px;color:#1e8e3e;font-weight:600';
-      resultEl.textContent='Class "'+name+'" created!';
-      classData=[]; await init();
-      toast('Class "'+name+'" created ✓','ok');
-    } else {
-      resultEl.style.cssText='display:block;padding:8px 12px;background:#fce8e6;border-radius:6px;font-size:13px;color:#c5221f;font-weight:600';
-      resultEl.textContent='Error: '+(r.message||'Failed');
-    }
-  }catch(e){ toast('Connection error','err'); }
-  finally{ btn.disabled=false; btn.textContent='➕ Create Class'; }
-}
 async function assignAllIds(){
   var btn=event.target; btn.disabled=true; btn.textContent='Assigning…';
   var res=document.getElementById('assignIdResult');
@@ -3027,7 +2806,7 @@ function mnavGo(secId, btn){
   // Update mobile nav active state
   document.querySelectorAll('.mnav-btn').forEach(function(b){b.classList.remove('active');});
   // Map secId to mnav button
-  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework',hwbook:'mnav-hwbook'};
+  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework'};
   if(map[secId]) document.getElementById(map[secId]).classList.add('active');
   // Close more menu if open
   document.getElementById('mnavMoreMenu').classList.remove('show');
@@ -3058,7 +2837,7 @@ function toggleMnavMore(btn){
 var _origShowSec = showSec;
 showSec = function(id){
   _origShowSec(id);
-  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework',hwbook:'mnav-hwbook'};
+  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework'};
   document.querySelectorAll('.mnav-btn').forEach(function(b){b.classList.remove('active');});
   if(map[id]) document.getElementById(map[id]).classList.add('active');
 };
