@@ -417,6 +417,7 @@ body { background: var(--bg) !important; }
     <div class="nlbl">Tracking</div>
     <button class="ni" onclick="showSec('tuition')"><span class="ni-ico">💳</span>Tuition & Attendance</button>
     <button class="ni" onclick="showSec('homework')"><span class="ni-ico">📝</span>Homework Tracker</button>
+    <button class="ni" onclick="showSec('hwbook')"><span class="ni-ico">📖</span>Homework Book</button>
     <button class="ni" onclick="showSec('participation')"><span class="ni-ico">🙋</span>Participation</button>
     <div class="nlbl">Reports</div>
     <button class="ni" onclick="showSec('diligence')"><span class="ni-ico">🏆</span>Diligent Report</button>
@@ -522,6 +523,12 @@ body { background: var(--bg) !important; }
       <div id="hwTrackerContent">
         <p style="padding:40px;text-align:center;color:var(--g400)">Select a class above to view homework submissions.</p>
       </div>
+    </div>
+
+    <!-- ⑤ HOMEWORK BOOK -->
+    <div id="sec-hwbook" class="sec">
+      <div class="ctabs" id="hwBookTabs"><button class="ctab active">Select a class</button></div>
+      <div id="hwBookContent"><p style="padding:40px;text-align:center;color:var(--g400)">Select a class above to view assigned homework.</p></div>
     </div>
 
     <!-- ⑤ PARTICIPATION REPORT -->
@@ -841,8 +848,8 @@ body { background: var(--bg) !important; }
       <span class="mnav-ico" style="background:var(--red);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;margin-top:-14px;box-shadow:0 4px 12px rgba(224,26,34,.5)">✅</span>
       <span class="mnav-lbl">End</span>
     </button>
-    <button class="mnav-btn" id="mnav-homework" onclick="mnavGo('homework',this)">
-      <span class="mnav-ico">📝</span><span class="mnav-lbl">Homework</span>
+    <button class="mnav-btn" id="mnav-hwbook" onclick="mnavGo('hwbook',this)">
+      <span class="mnav-ico">📖</span><span class="mnav-lbl">HW Book</span>
     </button>
     <button class="mnav-btn" id="mnav-more" onclick="toggleMnavMore(this)">
       <span class="mnav-ico">☰</span><span class="mnav-lbl">More</span>
@@ -852,6 +859,7 @@ body { background: var(--bg) !important; }
 
 <!-- More menu overlay -->
 <div class="mnav-more-menu" id="mnavMoreMenu">
+  <button class="mnav-more-item" onclick="mnavGo('homework',null);toggleMnavMore()"><span>📝</span> Homework Tracker</button>
   <button class="mnav-more-item" onclick="mnavGo('weekly',null);toggleMnavMore()"><span>🗓</span> Weekly Schedule</button>
   <button class="mnav-more-item" onclick="mnavGo('participation',null);toggleMnavMore()"><span>🙋</span> Participation</button>
   <button class="mnav-more-item" onclick="mnavGo('diligence',null);toggleMnavMore()"><span>🏆</span> Diligent Report</button>
@@ -904,7 +912,8 @@ async function api(action, data) {
 var TITLES = {
   overview:'Students Overview', weekly:'Weekly Schedule',
   tuition:'Tuition & Attendance', homework:'Homework Tracker',
-  participation:'Participation Report', diligence:'Diligent Report',
+  hwbook:'Homework Book',
+    participation:'Participation Report', diligence:'Diligent Report',
   archive:'Archive', settings:'Settings'
 };
 
@@ -922,6 +931,7 @@ function showSec(id) {
   if (id==='archive') loadArchive();
   if (id==='participation' && classData.length) buildPartTabs();
   if (id==='homework' && classData.length) buildHWTrackerTabs();
+  if (id==='hwbook' && classData.length) buildHWBookTabs();
   if (id==='settings') {
     // Populate class selector in Homework Management
     var sel=document.getElementById('hwDelClass');
@@ -956,6 +966,7 @@ async function doDeleteHWFromSettings(){
       res.style.padding='8px 12px'; res.style.borderRadius='7px';
       res.textContent='✓ Đã xóa '+r.deleted+' homework. ('+label+')';
       delete hwTrackerCache[classId];
+      invalidateHWBook(classId);
     } else {
       res.style.background='#fee2e2'; res.style.color='#991b1b';
       res.style.padding='8px 12px'; res.style.borderRadius='7px';
@@ -1450,7 +1461,9 @@ function renderTuitionGrid(classId){
       var cell=document.getElementById(cellId);
       if(!cell)continue;
       var payment=s.monthPayments[moNo];
-      buildPaidCell(cell,classId,s.email,moNo,!!payment,payment?payment.date:'',payment?payment.note:'');
+      var pd = payment ? (payment.date||'') : '';
+      if(pd.length > 10) pd = pd.slice(0,10);
+      buildPaidCell(cell,classId,s.email,moNo,!!payment,pd,payment?payment.note:'');
     }
   });
 }
@@ -1561,6 +1574,9 @@ async function removeAllAtt(classId, sessionDate){
 }
 
 function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
+  // Normalize: GAS may return ISO datetime, keep date part only
+  if(paidDate && paidDate.length > 10) paidDate = paidDate.slice(0,10);
+
   cell.innerHTML='';
   var wrap=document.createElement('div');
   wrap.style='display:flex;flex-direction:column;gap:3px;padding:4px 2px;';
@@ -1569,7 +1585,7 @@ function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
   topRow.style='display:flex;align-items:center;gap:5px;flex-wrap:wrap;';
 
   var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=paid;
-  cb.style='width:14px;height:14px;cursor:pointer;accent-color:var(--red);flex-shrink:0';
+  cb.style='width:14px;height:14px;cursor:pointer;accent-color:#4285F4;flex-shrink:0';
   cb.onchange=(function(cid,em,mo){return function(){togglePaidCell(cid,em,mo,this);};})(classId,email,moNo);
 
   var lbl=document.createElement('span');
@@ -1578,22 +1594,31 @@ function buildPaidCell(cell,classId,email,moNo,paid,paidDate,note){
 
   topRow.appendChild(cb); topRow.appendChild(lbl);
 
-  if(paid&&paidDate){
-    var di=document.createElement('input'); di.type='date'; di.value=paidDate;
+  if(paid){
+    // Always show date picker when paid; use today as display default only
+    var displayDate = paidDate || new Date().toISOString().split('T')[0];
+    var di=document.createElement('input'); di.type='date'; di.value=displayDate;
     di.style='font-size:10px;border:1px solid #86efac;border-radius:4px;padding:1px 4px;background:#f0fdf4;color:#166534;cursor:pointer;width:88px;';
     di.onchange=(function(cid,em,mo){return function(){updatePaidDate(cid,em,mo,this);};})(classId,email,moNo);
     topRow.appendChild(di);
   }
   wrap.appendChild(topRow);
 
-  var ni=document.createElement('input'); ni.type='text'; ni.value=note||''; ni.placeholder='Note…';
-  ni.style='font-size:10px;border:1px solid var(--g200);border-radius:4px;padding:2px 6px;width:100%;color:var(--g600);outline:none;';
-  ni.onfocus=function(){this.style.borderColor='var(--red)';};
-  ni.onblur=(function(cid,em,mo,nEl){return function(){
-    api('markTuitionPaid',{classId:cid,studentEmail:em,monthNo:mo,paid:true,paidDate:paidDate||new Date().toISOString().split('T')[0],note:nEl.value})
-      .catch(function(){});
-  };})(classId,email,moNo,ni);
-  wrap.appendChild(ni);
+  if(paid){
+    // Note field only shown when paid; only saves on blur if content changed
+    var ni=document.createElement('input'); ni.type='text'; ni.value=note||''; ni.placeholder='Note…';
+    ni.style='font-size:10px;border:1px solid var(--g200);border-radius:4px;padding:2px 6px;width:100%;color:var(--g600);outline:none;';
+    ni.onfocus=function(){this.style.borderColor='#4285F4';};
+    ni.dataset.original = note||'';
+    ni.onblur=(function(cid,em,mo,nEl,pd){return function(){
+      if(nEl.value === nEl.dataset.original) return; // no change — skip
+      var currentDate = pd || new Date().toISOString().split('T')[0];
+      api('markTuitionPaid',{classId:cid,studentEmail:em,monthNo:mo,paid:true,paidDate:currentDate,note:nEl.value})
+        .then(function(){ nEl.dataset.original=nEl.value; })
+        .catch(function(){});
+    };})(classId,email,moNo,ni,paidDate);
+    wrap.appendChild(ni);
+  }
   cell.appendChild(wrap);
 }
 
@@ -1844,7 +1869,7 @@ function addHWEntry(){
         '</div>'+
         '<div>'+
           '<div style="font-size:10px;color:var(--g400);margin-bottom:4px">Chọn ngày deadline:</div>'+
-          '<input type="date" class="fc hwe-deadline" style="width:100%"/>'+
+          '<input type="date" class="fc hwe-deadline" style="width:100%" onchange="checkDeadlineConflict(this)"/>'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -1855,14 +1880,176 @@ function syncDeadlineFromSched(sel, entryId){
   if(!sel.value) return;
   var entry=document.getElementById(entryId);
   var dlInput=entry.querySelector('.hwe-deadline');
-  if(dlInput){ dlInput.value=sel.value; }
+  if(dlInput){ dlInput.value=sel.value; checkDeadlineConflict(dlInput); }
 }
 
+// Check if chosen deadline conflicts with existing homework deadlines in same class
+function checkDeadlineConflict(dlInput){
+  var newDate = dlInput.value;
+  if(!newDate) return;
+
+  var classId = currentFinishClass;
+  if(!classId) return;
+
+  // Get all current deadlines from hwTrackerCache or hwBookCache
+  var existingHW = [];
+  if(hwTrackerCache[classId] && hwTrackerCache[classId].homework){
+    existingHW = hwTrackerCache[classId].homework;
+  } else if(hwBookCache[classId] && hwBookCache[classId].homework){
+    existingHW = hwBookCache[classId].homework;
+  }
+
+  // Also check deadlines from other entries in the same End Session form
+  document.querySelectorAll('#hwEntries > div').forEach(function(entry){
+    var otherDL = entry.querySelector('.hwe-deadline');
+    if(otherDL && otherDL !== dlInput && otherDL.value === newDate){
+      existingHW = existingHW.concat([{
+        type: (entry.querySelector('.hwe-skill')||{}).value||'?',
+        deadline: otherDL.value,
+        content: ((entry.querySelector('.hwe-content')||{}).value||'').slice(0,40),
+        _fromForm: true
+      }]);
+    }
+  });
+
+  var conflicts = existingHW.filter(function(hw){
+    return hw.deadline === newDate && hw.deadline >= new Date().toISOString().split('T')[0];
+  });
+
+  if(!conflicts.length) {
+    // Clear any existing conflict warning
+    var warn = dlInput.parentNode.querySelector('.deadline-conflict-warn');
+    if(warn) warn.remove();
+    dlInput.style.borderColor='';
+    return;
+  }
+
+  // Show conflict warning
+  var typeNames={W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
+  var conflictList = conflicts.map(function(hw){
+    return (typeNames[hw.type]||hw.type||'?') + (hw.content?' — '+hw.content.slice(0,30)+'…':'');
+  }).join('<br>• ');
+
+  dlInput.style.borderColor='#d97706';
+
+  var existing = dlInput.parentNode.querySelector('.deadline-conflict-warn');
+  if(existing) existing.remove();
+
+  var warn = document.createElement('div');
+  warn.className = 'deadline-conflict-warn';
+  warn.style='margin-top:8px;padding:10px 12px;background:#fffbeb;border:1px solid #fbbf24;border-radius:8px;font-size:12px;';
+  warn.innerHTML =
+    '<div style="font-weight:700;color:#92400e;margin-bottom:6px">⚠ Deadline trùng ngày '+fmtBrit(newDate)+':</div>'+
+    '<div style="color:#78350f;margin-bottom:8px">• '+conflictList+'</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+      '<button onclick="resolveConflict(\'keep\',this)" '+
+        'style="padding:4px 10px;border:1px solid #d97706;border-radius:6px;background:white;color:#92400e;font-size:11px;font-weight:600;cursor:pointer">'+
+        '📌 Giữ cùng ngày '+fmtBrit(newDate)+
+      '</button>'+
+      '<button onclick="resolveConflict(\'move\',this)" '+
+        'style="padding:4px 10px;border:none;border-radius:6px;background:#fbbf24;color:#451a03;font-size:11px;font-weight:600;cursor:pointer">'+
+        '📅 Dời deadline hiện tại sang ngày khác'+
+      '</button>'+
+    '</div>'+
+    // Hidden date picker for the "move" option
+    '<div id="conflictMoveArea" style="display:none;margin-top:8px">'+
+      '<label style="font-size:11px;color:#78350f;font-weight:600">Chọn ngày mới cho bài cũ:</label>'+
+      '<input type="date" id="conflictNewDate" class="fc" style="margin-top:4px;width:180px;border-color:#d97706"/>'+
+      '<button onclick="applyConflictMove(this,\''+classId+'\')" '+
+        'style="margin-left:8px;padding:5px 12px;border:none;border-radius:6px;background:#4285F4;color:white;font-size:12px;font-weight:600;cursor:pointer">'+
+        'Xác nhận dời'+
+      '</button>'+
+    '</div>';
+
+  // Store reference to conflicting HW for apply step
+  warn._conflicts = conflicts;
+  warn._dlInput = dlInput;
+
+  dlInput.parentNode.appendChild(warn);
+}
+
+function resolveConflict(action, btn){
+  var warn = btn.closest('.deadline-conflict-warn');
+  if(action==='keep'){
+    // User accepts duplicate deadline — just clear the warning
+    warn.remove();
+    // Reset border
+    var dlInput = warn._dlInput || btn.closest('[id^="hwe"]').querySelector('.hwe-deadline');
+    if(dlInput) dlInput.style.borderColor='#34A853';
+  } else {
+    // Show date picker to choose new date for the existing conflicting HW
+    var moveArea = warn.querySelector('#conflictMoveArea');
+    if(moveArea) moveArea.style.display='';
+    // Set min date to tomorrow
+    var newDateInput = warn.querySelector('#conflictNewDate');
+    if(newDateInput){
+      var tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+      newDateInput.min = tomorrow.toISOString().split('T')[0];
+      newDateInput.focus();
+    }
+  }
+}
+
+async function applyConflictMove(btn, classId){
+  var warn = btn.closest('.deadline-conflict-warn');
+  var newDateInput = warn.querySelector('#conflictNewDate');
+  var newDate = newDateInput ? newDateInput.value : '';
+  if(!newDate){ toast('Please select a new date','err'); return; }
+
+  // The conflicts stored in the warning
+  var conflicts = warn._conflicts || [];
+  if(!conflicts.length){ warn.remove(); return; }
+
+  btn.disabled=true; btn.textContent='Saving…';
+
+  // Update each conflicting HW deadline via GAS
+  // We need: classId, sessionDate, type, new deadline
+  var ok=true;
+  for(var i=0;i<conflicts.length;i++){
+    var hw=conflicts[i];
+    if(hw._fromForm){
+      // It's in the current form — update that entry's deadline input
+      document.querySelectorAll('#hwEntries > div').forEach(function(entry){
+        var dlIn=entry.querySelector('.hwe-deadline');
+        var sk=(entry.querySelector('.hwe-skill')||{}).value||'';
+        if(dlIn && dlIn.value===hw.deadline && sk===hw.type && !hw._moved){
+          dlIn.value=newDate;
+          hw._moved=true;
+        }
+      });
+    } else {
+      // Existing HW in GAS — call updateHomeworkDeadline
+      try{
+        var r=await api('updateHomeworkDeadline',{classId:classId,sessionDate:hw.sessionDate,type:hw.type,deadline:newDate});
+        if(!r.success){ toast('Error updating: '+r.message,'err'); ok=false; }
+        else {
+          if(hwTrackerCache[classId]) delete hwTrackerCache[classId];
+          if(hwBookCache[classId]) delete hwBookCache[classId];
+        }
+      }catch(e){ toast('Connection error','err'); ok=false; }
+    }
+  }
+
+  if(ok){
+    toast('Deadline updated to '+fmtBrit(newDate)+' ✓','ok');
+    warn.remove();
+  } else {
+    btn.disabled=false; btn.textContent='Xác nhận dời';
+  }
+}
+
+
 async function doFinish(){
-  var classId=currentFinishClass;
-  var date=document.getElementById('moDate').value;
+  if(window._finishInProgress){toast('Please wait…','err');return;}
+  window._finishInProgress=true;
+  var finishBtn=document.querySelector('#moFinish .btn-r[onclick*="doFinish"]');
+  if(finishBtn){finishBtn.disabled=true;finishBtn.textContent='Saving…';}
   var dayLabel=document.getElementById('moDayLabel').value;
-  if(!date||!classId){toast('Select date','err');return;}
+  if(!date||!classId){
+    window._finishInProgress=false;
+    if(finishBtn){finishBtn.disabled=false;finishBtn.textContent='✅ Finish Session';}
+    toast('Select date','err');return;
+  }
 
   var cls=classData.find(function(c){return c.classId===classId;});
   var students=cls?cls.students:[];
@@ -1872,13 +2059,11 @@ async function doFinish(){
     if(sel)attOverrides[s.email]=sel.value;
   });
 
-  // Collect homework from 4-field entries
   var homework=[];
   document.querySelectorAll('#hwEntries > div').forEach(function(entry){
     var skill=(entry.querySelector('.hwe-skill')||{}).value||'';
     var content=((entry.querySelector('.hwe-content')||{}).value||'').trim();
     var assignedDate=(entry.querySelector('.hwe-assigned')||{}).value||date;
-    // Deadline: from select (if not 'manual') or from manual input
     var dlManual=entry.querySelector('.hwe-deadline');
     var deadline=dlManual?dlManual.value||'':'';
     if(content && skill){
@@ -1889,7 +2074,6 @@ async function doFinish(){
   try{
     var r=await api('finishSession',{classId:classId,date:date,dayLabel:dayLabel,homework:homework,attOverrides:attOverrides});
     if(r.success){
-      // Save participation scores in 1 batch call instead of N individual calls
       var scoreList=[];
       students.forEach(function(s){
         var inp=document.getElementById('part-'+s.email.replace(/[@.]/g,'_'));
@@ -1900,15 +2084,13 @@ async function doFinish(){
       if(scoreList.length) await api('batchUpdateScores',{classId:classId,scores:scoreList});
       toast('Session saved! ✓','ok');
       closeMo('moFinish');
-      // Clear ALL caches so fresh data is fetched
       if(hwTrackerCache[classId]) delete hwTrackerCache[classId];
+      invalidateHWBook(classId);
       delete tuitionCache[classId];
       delete tuitionCache[classId+'_totalMonths'];
       classData=[]; allSchedules={};
       await init();
-      // Navigate to Tuition tab and show the saved class immediately
       showSec('tuition');
-      // Activate the correct class tab
       document.querySelectorAll('#tuitionTabs .ctab').forEach(function(b){
         b.classList.remove('active');
         if(b.textContent===classId) b.classList.add('active');
@@ -1916,10 +2098,11 @@ async function doFinish(){
       await loadTuition(classId, true);
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
+  finally{
+    window._finishInProgress=false;
+    if(finishBtn){finishBtn.disabled=false;finishBtn.textContent='✅ Finish Session';}
+  }
 }
-
-// ═══════════════════════════════════════════════════════
-// ASSIGN HW MODAL
 // ═══════════════════════════════════════════════════════
 function openHWFor(classId){
   var sel=document.getElementById('moHWClass');
@@ -1944,6 +2127,7 @@ async function doAssignHW(){
     if(r.success){
       toast('Homework assigned ✓','ok'); closeMo('moHW');
       if(hwTrackerCache[classId])delete hwTrackerCache[classId];
+      invalidateHWBook(classId);
       if(document.getElementById('sec-homework').classList.contains('active')) buildHWTrackerTabs();
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
@@ -2000,6 +2184,7 @@ async function doAssignExtraHW(){
       toast('Extra HW assigned ✓','ok');
       closeMo('moExtraHW');
       if(hwTrackerCache[classId]) delete hwTrackerCache[classId];
+      invalidateHWBook(classId);
       if(document.getElementById('sec-homework').classList.contains('active')) buildHWTrackerTabs();
     } else toast('Error: '+r.message,'err');
   }catch(e){toast('Connection error','err');}
@@ -2283,6 +2468,144 @@ function buildHWCell(cell,classId,email,hw,status,note){
 // ═══════════════════════════════════════════════════════
 // ⑤ PARTICIPATION REPORT
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// HOMEWORK BOOK
+// ═══════════════════════════════════════════════════════
+var hwBookCache = {};
+
+function buildHWBookTabs() {
+  var el = document.getElementById('hwBookTabs');
+  el.innerHTML = '';
+  if (!classData.length) return;
+  classData.forEach(function(cls, i) {
+    var b = document.createElement('button');
+    b.className = 'ctab' + (i === 0 ? ' active' : '');
+    b.textContent = cls.classId;
+    b.onclick = (function(cid, btn) { return function() { loadHWBook(cid, btn); }; })(cls.classId, b);
+    el.appendChild(b);
+  });
+  loadHWBook(classData[0].classId, el.firstChild);
+}
+
+async function loadHWBook(classId, btn) {
+  document.querySelectorAll('#hwBookTabs .ctab').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var el = document.getElementById('hwBookContent');
+  if (hwBookCache[classId]) { renderHWBook(classId); return; }
+  el.innerHTML = '<p style="padding:40px;text-align:center;color:var(--g400)">Loading…</p>';
+  try {
+    var r = await api('getHomeworkTracker', { classId: classId });
+    if (!r.success) { el.innerHTML = '<p style="color:var(--primary);padding:20px">Error: ' + r.message + '</p>'; return; }
+    hwBookCache[classId] = r;
+    renderHWBook(classId);
+  } catch(e) { el.innerHTML = '<p style="color:var(--primary);padding:20px">Connection error</p>'; }
+}
+
+function renderHWBook(classId) {
+  var data = hwBookCache[classId]; if (!data) return;
+  var el = document.getElementById('hwBookContent');
+  var hwList = data.homework || [];
+  var today = new Date().toISOString().split('T')[0];
+
+  if (!hwList.length) {
+    el.innerHTML = '<div class="card"><div style="padding:40px;text-align:center;color:var(--g400)"><div style="font-size:32px;margin-bottom:8px">📖</div><div style="font-weight:600">No homework assigned yet</div></div></div>';
+    return;
+  }
+
+  var seen = {}, pending = [], past = [];
+  hwList.forEach(function(hw) {
+    if (seen[hw.hwId]) return;
+    seen[hw.hwId] = true;
+    if (hw.deadline && hw.deadline < today) past.push(hw);
+    else pending.push(hw);
+  });
+  pending.sort(function(a,b){ return (a.deadline||'') > (b.deadline||'') ? 1 : -1; });
+  past.sort(function(a,b){ return (a.deadline||'') < (b.deadline||'') ? 1 : -1; });
+
+  var typeNames={W:'Writing',L:'Listening',S:'Speaking',V:'Vocab',R:'Reading',G:'Grammar'};
+  var skBg={W:'#ffedd5',L:'#dbeafe',S:'#ede9fe',V:'#dcfce7',R:'#fce7f3',G:'#f3f4f6'};
+  var skCl={W:'#7c2d12',L:'#1e40af',S:'#4c1d95',V:'#166534',R:'#9d174d',G:'#374151'};
+  var skBorder={W:'#f97316',L:'#3b82f6',S:'#8b5cf6',V:'#22c55e',R:'#ec4899',G:'#6b7280'};
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function fmtDl(dl){
+    if(!dl||dl.length<10) return dl||'—';
+    var d=new Date(dl+'T00:00:00');
+    var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    return days[d.getDay()]+', '+parseInt(dl.slice(8))+'-'+months[d.getMonth()]+'-'+dl.slice(0,4);
+  }
+
+  function hwCard(hw, isPast){
+    var tname=typeNames[hw.type]||hw.type||'—';
+    var border=skBorder[hw.type]||'#6b7280';
+    var bg=skBg[hw.type]||'#f3f4f6';
+    var cl=skCl[hw.type]||'#374151';
+    var contentHtml=(hw.content||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    var sessDisp=hw.sessionDate?fmtBrit(hw.sessionDate):(hw.isExtra?'⭐ Extra':'—');
+    var dlDisp=fmtDl(hw.deadline||'');
+
+    var countdownHtml='';
+    if(!isPast&&hw.deadline){
+      var diff=Math.ceil((new Date(hw.deadline+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+      var col=diff<=1?'#dc2626':diff<=3?'#d97706':'#34A853';
+      var txt=diff===0?'Due today':diff===1?'1 day left':diff+' days left';
+      countdownHtml='<span style="font-size:12px;font-weight:700;color:'+col+'">'+txt+'</span>';
+    }
+
+    var students=data.students||[];
+    var total=students.length,done=0;
+    students.forEach(function(s){
+      var sub=s.submissions[hw.hwId];
+      if(sub&&sub.status==='Done') done++;
+    });
+    var pct=total?Math.round((done/total)*100):0;
+    var rateBg=pct>=80?'#e6f4ea':pct>=40?'#fef9c3':'#fce8e6';
+    var rateCol=pct>=80?'#137333':pct>=40?'#854d0e':'#c5221f';
+
+    return '<div style="background:white;border-radius:10px;padding:16px 18px;border-left:4px solid '+border+';box-shadow:0 1px 3px rgba(60,64,67,.15)'+(isPast?';opacity:.85':'')+'">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+          +'<span style="padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;background:'+bg+';color:'+cl+'">'+tname+'</span>'
+          +(hw.isExtra?'<span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#fef9c3;color:#854d0e">⭐ Extra</span>':'')
+          +'<span style="font-size:11px;color:var(--g400)">📅 '+sessDisp+'</span>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px;">'
+          +countdownHtml
+          +'<span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:'+rateBg+';color:'+rateCol+'">'+done+'/'+total+' done</span>'
+        +'</div>'
+      +'</div>'
+      +'<div style="font-size:13px;color:var(--g900);line-height:1.6;margin-bottom:10px;white-space:pre-wrap;word-break:break-word">'+contentHtml+'</div>'
+      +'<div style="font-size:11px;color:var(--g400)">📅 Deadline: <strong style="color:'+(isPast?'#9aa0a6':'var(--g900)')+'">'+dlDisp+'</strong></div>'
+      +'<div style="margin-top:10px;background:var(--g100);border-radius:4px;height:5px;overflow:hidden">'
+        +'<div style="height:100%;background:'+border+';width:'+pct+'%;border-radius:4px;transition:width .5s"></div>'
+      +'</div>'
+    +'</div>';
+  }
+
+  function grid(arr, isPast){
+    if(!arr.length) return '<p style="color:var(--g400);font-size:13px;padding:12px 0">'+(isPast?'No past homework.':'No upcoming homework.')+'</p>';
+    return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">'+arr.map(function(h){return hwCard(h,isPast);}).join('')+'</div>';
+  }
+
+  el.innerHTML='<div style="padding:2px 0">'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--g900)">Pending Homework ('+pending.length+')</div>'
+    +grid(pending,false)
+    +(past.length
+      ?'<div style="display:flex;align-items:center;gap:10px;margin:24px 0 16px">'
+          +'<div style="flex:1;height:1px;background:var(--g200)"></div>'
+          +'<div style="background:var(--g900);color:white;font-size:13px;font-weight:700;padding:5px 14px;border-radius:20px">Past Homework ('+past.length+')</div>'
+          +'<div style="flex:1;height:1px;background:var(--g200)"></div>'
+        +'</div>'
+        +grid(past,true)
+      :'')
+  +'</div>';
+}
+
+// hwBookCache invalidation helpers (called by write actions)
+function invalidateHWBook(classId){
+  if(hwBookCache[classId]) delete hwBookCache[classId];
+}
+
 function buildPartTabs(){
   var el=document.getElementById('partTabs');
   el.innerHTML='<button class="ctab active" onclick="filterPart(\'all\',this)">All Classes</button>';
@@ -2863,7 +3186,7 @@ function mnavGo(secId, btn){
   // Update mobile nav active state
   document.querySelectorAll('.mnav-btn').forEach(function(b){b.classList.remove('active');});
   // Map secId to mnav button
-  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework'};
+  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework',hwbook:'mnav-hwbook'};
   if(map[secId]) document.getElementById(map[secId]).classList.add('active');
   // Close more menu if open
   document.getElementById('mnavMoreMenu').classList.remove('show');
@@ -2894,7 +3217,7 @@ function toggleMnavMore(btn){
 var _origShowSec = showSec;
 showSec = function(id){
   _origShowSec(id);
-  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework'};
+  var map={overview:'mnav-overview',tuition:'mnav-tuition',homework:'mnav-homework',hwbook:'mnav-hwbook'};
   document.querySelectorAll('.mnav-btn').forEach(function(b){b.classList.remove('active');});
   if(map[id]) document.getElementById(map[id]).classList.add('active');
 };
