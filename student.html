@@ -157,13 +157,14 @@ table.pt tr:last-child td{border-bottom:none;}
 .mnb .ml{font-size:9px;font-weight:600;}
 @media(max-width:768px){.mob-nav{display:block;}}
 
-/* ── Google Material Light Overrides ─────────────────── */
+/* ── Google Material Light Theme ─────────────────────── */
 :root {
   --primary:#4285F4; --primary-dk:#1a73e8; --primary-tint:#e8f0fe;
+  --g-red:#EA4335; --g-green:#34A853; --g-yellow:#FBBC05;
   --surface:#ffffff; --bg:#f1f3f4; --border:#dadce0;
   --on-bg:#202124; --on-sub:#5f6368;
 }
-body { background: var(--bg) !important; }
+body { background: var(--bg) !important; color: var(--on-bg) !important; }
 .sidebar { background: var(--surface) !important; border-right: 1px solid var(--border); }
 .sb-header { border-bottom: 1px solid var(--border) !important; }
 .brand-name { color: var(--on-bg) !important; }
@@ -173,14 +174,18 @@ body { background: var(--bg) !important; }
 .nav-lbl { color: var(--on-sub) !important; }
 .nav-item { color: var(--on-sub) !important; }
 .nav-item:hover { background: var(--bg) !important; color: var(--on-bg) !important; }
-.nav-item.active { background: var(--primary-tint) !important; color: var(--primary) !important; }
+.nav-item.active { background: var(--primary-tint) !important; color: var(--primary) !important; font-weight: 700; }
 .sb-footer { border-top: 1px solid var(--border) !important; }
 .btn-logout { color: var(--on-sub) !important; }
 .btn-logout:hover { background: var(--primary-tint) !important; color: var(--primary) !important; }
 .topbar { background: var(--surface) !important; border-bottom: 1px solid var(--border) !important; box-shadow: 0 1px 2px rgba(60,64,67,.1); }
+.page-title { color: var(--on-bg) !important; }
 .mob-nav { background: var(--surface) !important; border-top: 1px solid var(--border) !important; }
 .mnb { color: var(--on-sub) !important; }
 .mnb.active { color: var(--primary) !important; }
+.stat-card { border: 1px solid var(--border); }
+.stat-val { color: var(--on-bg) !important; }
+.stat-sub { color: var(--on-sub) !important; }
 </style>
 </head>
 <body>
@@ -192,7 +197,7 @@ body { background: var(--bg) !important; }
 <div class="layout">
 <aside class="sidebar">
   <div class="sb-header">
-    <div class="brand"><div class="brand-icon">I</div><div class="brand-name">IELTS <span>Hub</span></div></div>
+    <div class="brand"><div class="brand-icon">I</div><div class="brand-name"><span style="color:#4285F4">E</span><span style="color:#EA4335">d</span><span style="color:#FBBC05">u</span><span style="color:#34A853">Portal</span></div></div>
   </div>
   <div class="user-info">
     <div class="user-av" id="uAvatar">?</div>
@@ -275,7 +280,7 @@ body { background: var(--bg) !important; }
       <div class="hw-grid" id="hwGrid">
         <p style="color:var(--g400);font-size:13px;">No upcoming homework.</p>
       </div>
-      <!-- Past homework — collapsible -->
+      <!-- Past homework collapsible -->
       <div id="overdueSection" style="margin-top:28px;display:none;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
           <div style="flex:1;height:1px;background:var(--g200);"></div>
@@ -457,16 +462,12 @@ function renderCalendar() {
 
 function renderHomework() {
   const all = sd.homework || [];
-
-  // Split: pending = daysLeft >= 0, past = daysLeft < 0 (ALL incl. Done)
   const hw        = all.filter(h => h.daysLeft >= 0);
   const hwOverdue = all.filter(h => h.daysLeft < 0);
 
-  // Sort pending earliest first; past most-recent-deadline first
   hw.sort((a,b) => (a.deadline||'') > (b.deadline||'') ? 1 : -1);
   hwOverdue.sort((a,b) => (a.deadline||'') < (b.deadline||'') ? 1 : -1);
 
-  // Show/hide overdue section
   const overdueSection = document.getElementById('overdueSection');
   if (hwOverdue.length) {
     overdueSection.style.display = '';
@@ -490,7 +491,7 @@ function renderHomework() {
 
   const renderCard = (h) => {
     const d = h.daysLeft;
-    const ct = d<0?'⚠ Overdue':d===0?'⏰ Due today!':d===1?'1 day left':`${d} days left`;
+    const ct = d===0?'⏰ Due today!':d===1?'1 day left':`${d} days left`;
     const urgent = d<=1;
     const st = h.status||'Undone';
     const stCfg = statusCfg[st]||statusCfg.Undone;
@@ -508,7 +509,7 @@ function renderHomework() {
       <div class="hw-top">
         <span class="hw-badge hb-${h.type||'W'}">${typeNames[h.type]||h.type}</span>
         ${h.isExtra?'<span style="font-size:10px;background:#fef9c3;color:#854d0e;border-radius:5px;padding:2px 7px;font-weight:700">⭐ Extra</span>':''}
-        <span class="hw-countdown ${d<0&&st!=='Done'?'bad':urgent&&st!=='Done'?'warn':'good'}">${st==='Done'?'✓ Done':ct}</span>
+        <span class="hw-countdown ${d<0&&st!=='Done'?'bad':urgent&&st!=='Done'?'warn':'good'}">${st==='Done'?'✓ Done':d<0?'⚠ Overdue':ct}</span>
       </div>
       <div class="hw-content" style="white-space:pre-wrap;word-break:break-word">${contentHtml}</div>
       <div class="hw-deadline">📅 Deadline: ${deadlineDisp}</div>
@@ -527,7 +528,6 @@ function toggleOverdue() {
   body.style.display = hidden ? '' : 'none';
   chevron.style.transform = hidden ? '' : 'rotate(-90deg)';
 }
-
 
 function renderTuition() {
   const t = sd.tuition || {};
@@ -583,36 +583,25 @@ function renderTuition() {
       return '<div style="width:52px;height:52px;border-radius:9px;background:var(--g100);color:var(--g400);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">'+(i+1)+'</div>';
     }).join('');
 
-      // Completed months get a collapsible header
-      const tid = 'tuition-mo-' + mo;
-      const isCollapsible = isComplete && paid; // only collapse months that are fully done + paid
-      const headerBg = isCurrent ? 'white' : isComplete ? '#f0fdf4' : isFuture ? '#fafaf9' : 'white';
-      const borderCol = isCurrent ? '#4285F4' : isComplete ? '#86efac' : isFuture ? 'var(--g100)' : 'var(--g200)';
-
-      const headerHtml =
-        '<div style="display:flex;align-items:center;justify-content:space-between;'+(isCollapsible?'cursor:pointer;':'')+'" '+(isCollapsible?'onclick="toggleTuitionMonth(\'' + tid + '\')"':'')+'>'+
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
-            '<span style="font-size:14px;font-weight:700;">Month '+(mo+1)+'</span>'+
-            (isCurrent?' <span style="color:#4285F4;font-size:11px">&#9679; Current</span>':
-             isComplete?' <span style="color:#16a34a;font-size:11px">&#10003; Complete</span>':
-             isFuture?' <span style="color:var(--g400);font-size:11px">Upcoming</span>':'')+
-            '<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:'+(paid?'#dcfce7':'#fee2e2')+';color:'+(paid?'#166534':'#991b1b')+'">'+
-              (paid?'&#10003; Paid '+fmtDot(payment.date):'Unpaid')+
-            '</span>'+
-            (paid && payment.note?'<span style="font-size:10px;color:var(--g400);font-style:italic">'+payment.note+'</span>':'')+
-          '</div>'+
-          (isCollapsible?'<span id="' + tid + '-chevron" style="font-size:10px;color:var(--g400);transition:transform .2s;transform:rotate(-90deg)">▼</span>':'')+
-        '</div>';
-
-      const bodyHtml =
-        '<div id="' + tid + '" style="'+(isCollapsible?'display:none;':'')+' margin-top:12px">'+
-          '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+dots+'</div>'+
-          (isCurrent?'<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="font-weight:600">'+sessInCycle+'/8 sessions</span><span style="color:var(--g400)">'+pct+'%</span></div><div class="progress-track"><div class="progress-fill" style="width:'+pct+'%"></div></div></div>':'')+
-        '</div>';
-
-      return '<div style="background:'+headerBg+';border:1px solid '+borderCol+';border-radius:10px;padding:16px;margin-bottom:10px;'+(isFuture?'opacity:.7':'')+'" >'+
-        headerHtml + bodyHtml +
-      '</div>';
+      return '<div style="background:'+(isCurrent?'white':isComplete?'#f0fdf4':isFuture?'#fafaf9':'white')+';border:1px solid '+(isCurrent?'var(--red)':isComplete?'#86efac':isFuture?'var(--g100)':'var(--g200)')+';border-radius:10px;padding:16px;margin-bottom:10px;'+(isFuture?'opacity:.7':'')+'" >'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">'+
+        '<div style="font-size:14px;font-weight:700;">Month '+(mo+1)+
+          (isCurrent?' <span style="color:var(--red);font-size:11px;margin-left:6px">&#9679; Current</span>':
+           isComplete?' <span style="color:#16a34a;font-size:11px;margin-left:6px">&#10003; Complete</span>':
+           isFuture?' <span style="color:var(--g400);font-size:11px;margin-left:6px">Upcoming</span>':'')+
+        '</div>'+
+        // Payment status badge
+        '<div style="display:flex;align-items:center;gap:8px;">'+
+          (lastDate?'<span style="font-size:11px;color:var(--g400)">Last: '+fmtDot(lastDate)+'</span>':'')+
+          '<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:'+(paid?'#dcfce7':'#fee2e2')+';color:'+(paid?'#166534':'#991b1b')+'">'+
+            (paid?'&#10003; Paid '+fmtDot(payment.date):'Unpaid')+
+          '</span>'+
+          (paid && payment.note?'<span style="font-size:10px;color:var(--g400);font-style:italic">'+payment.note+'</span>':'')+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+dots+'</div>'+
+      (isCurrent?'<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="font-weight:600">'+sessInCycle+'/8 sessions</span><span style="color:var(--g400)">'+pct+'%</span></div><div class="progress-track"><div class="progress-fill" style="width:'+pct+'%"></div></div></div>':'')+
+    '</div>';
   }).join('');
 
   document.getElementById('tuitionContent').innerHTML =
@@ -626,15 +615,6 @@ function renderTuition() {
         '<div style="font-size:11px;color:var(--g400)">month(s) completed</div>'+
       '</div>'+
     '</div>'+monthsHtml;
-}
-
-function toggleTuitionMonth(id) {
-  const body = document.getElementById(id);
-  const chevron = document.getElementById(id + '-chevron');
-  if (!body) return;
-  const hidden = body.style.display === 'none';
-  body.style.display = hidden ? '' : 'none';
-  if (chevron) chevron.style.transform = hidden ? '' : 'rotate(-90deg)';
 }
 
 function renderParticipation() {
